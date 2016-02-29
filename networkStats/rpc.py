@@ -16,7 +16,7 @@ Steps to clone Bitcoin source tree & run daemon:
 
 import requests, json, re
 
-#> Bitcoin JSON RPC
+#> Bitcoin JSON RPC (relevant: https://github.com/bitcoin/bitcoin/blob/master/src/rpc/net.cpp)
 
 host = '127.0.0.1'
 port = 8888
