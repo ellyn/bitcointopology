@@ -223,7 +223,7 @@ def processEvent(eventEntry):
 
 
 def executeSimulation(numNodes = 800, darkNodeProb = 0.5, simulationLength = 86400, timestep = 0.1):
-    global eventLog, node, hardcodedIPs, ipToNodes, ipToNonDarkNodes, seederNodes, nodes, initNodes
+    global eventLog, node, hardcodedIPs, ipToNodes, ipToNonDarkNodes, seederNodes, nodes, initNodes, globalTime
 
     realStart = time.time()
     eventLog = Queue.PriorityQueue()
