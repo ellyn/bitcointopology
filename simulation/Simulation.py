@@ -1,6 +1,6 @@
 #> Python 3.5
 
-import collections, uuid, random, time, Queue
+import collections, uuid, random, time, Queue, pickle
 import numpy as np
 
 NUM_INIT_NODES = 600
@@ -281,9 +281,18 @@ def executeSimulation(numNodes = 800, darkNodeProb = 0.5, simulationLength = 864
         processEvent(nextEvent[1])
 
     realEnd = time.time()
+    
+    # Print final graph to file
+    timeStr = time.strftime("%Y%m%d-%H%M%S")
+    filename = 'results' + timeStr
+    
+    with open(filename, "wb") as f:
+        for node in ipToNodes.values():
+            pickle.dump((node.ipV4Addr, node.outgoingCnxs), f)
+    
 
     # Simulation done! Return network state & event log.
-    print('Simulation complete in %.2f seconds.' % (realEnd - realStart))
+    # print('Simulation complete in %.2f seconds.' % (realEnd - realStart))
 
     return (nodes, eventLog)
 
