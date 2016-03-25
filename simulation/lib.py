@@ -45,6 +45,20 @@ def react(node, globalTime):
     events.append(event(node.ipV4Addr, peerMap[peerKey], 'connectRequest'))
   
   # TODO: ADDR propagation (2.1)
+
+  #Starting how to select from peers (2.3)
+  '''
+  rho = node.tried.size / node.new.size
+  PrTried = (Math.sqrt(rho) * (9-node.outgoingCnxs)) / ((w+1) + Math.sqrt(rho) * (9-node.outgoingCnxs))
+  num = random.random()
+  if num<PrTried:
+    table = node.tried
+  else:
+    table = node.new
+  bucketNum = ranom.randint(0,table.rowsize)
+  posInBucket = random.randint(0,table.colsize)
+  
+  '''
   
   return events
 
