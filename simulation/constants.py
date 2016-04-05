@@ -1,3 +1,8 @@
+import random
+
+randomSeed = '0.166241939035787'
+random = random.Random(randomSeed)
+
 # NETWORK SETTINGS
 NUM_INIT_NODES = 600
 NUM_SEEDERS = 6
@@ -20,4 +25,3 @@ CONNECT = 3
 CONNECTION_FAILURE = 4
 REQUEST_CONNECTION = 5
 CONNECTION_INFO = 6
-
