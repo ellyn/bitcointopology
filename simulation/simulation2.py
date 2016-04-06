@@ -4,6 +4,7 @@ import argparse, time, pickle
 
 from constants import *
 from network import Network
+from node import Node
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -45,7 +46,7 @@ def executeSimulation(numNodes, simulationLength, latencyType, darkNodeProb, out
     numNodes, simulationLength, latencyType, darkNodeProb))
 
   # Initialize network.
-  network = Network(numInitNodes = numNodes, latencyInfo = latencyType, darkNodeProb = darkNodeProb)
+  network = Network(numInitNodes = NUM_INIT_NODES, totalNodes = numNodes, latencyInfo = latencyType, darkNodeProb = darkNodeProb)
 
   # Run simulation until time over.
   while network.globalTime < simulationLength:

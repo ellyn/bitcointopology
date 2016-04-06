@@ -6,6 +6,7 @@ random = random.Random(randomSeed)
 # NETWORK SETTINGS
 NUM_INIT_NODES = 600
 NUM_SEEDERS = 6
+NUM_NODES = 1000
 DNS_QUERY_SIZE = 40
 
 # NODE TYPES

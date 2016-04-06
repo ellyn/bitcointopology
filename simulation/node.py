@@ -10,7 +10,7 @@ class Node(object):
         self.incomingCnxs = []
         self.outgoingCnxs = []
 
-    def mapToTriedBucket(ipAddr):
+    def mapToTriedBucket(self, ipAddr):
         temp = ipAddr.split('.')
         ipGroup = temp[0] + '.' + temp[1] # /16 group, i.e. first two numbers
         rand = str(self.nonce)
@@ -18,8 +18,8 @@ class Node(object):
         ibkt = hash(rand + ipGroup + str(ival)) % 64
         return ibkt
 
-    def addToTried(ipAddr, globalTime, dtMin = 0):
-        bucket = mapToTriedBucket(ipAddr)
+    def addToTried(self, ipAddr, globalTime, dtMin = 0):
+        bucket = self.mapToTriedBucket(ipAddr)
         if ipAddr in self.triedTable[bucket]:
             # Only update if last message was > dtMin seconds ago.
             if globalTime - self.triedTable[bucket][ipAddr] >= dtMin:
@@ -37,7 +37,7 @@ class Node(object):
                         oldestIP, oldestTimestamp = ip, timestamp
                 del self.triedTable[bucket][oldestIP] 
                 self.triedTable[bucket][ipAddr] = globalTime
-                addToNew(ipAddr, globalTime, oldVal)
+                self.addToNew(ipAddr, globalTime, oldVal)
 
                 if oldestIP in self.incomingCnxs:
                     self.incomingCnxs.remove(oldestIP)
@@ -46,7 +46,7 @@ class Node(object):
             else:
                 self.triedTable[bucket][ipAddr] = globalTime
 
-    def mapToNewBucket(ipAddr, peerIP):
+    def mapToNewBucket(self, ipAddr, peerIP):
         temp = ipAddr.split('.')
         ipGroup = temp[0] + '.' + temp[1]
 
@@ -61,7 +61,7 @@ class Node(object):
     # Returns terrible address from given bucket dictionary 
     # An address is terrible when it is more than 30 days old 
     # or has too many failed connection attempts
-    def isTerrible(bucket_dict):
+    def isTerrible(self, bucket_dict):
         for ip in bucket_dict:
             if globalTime - bucket_dict[ip] == 2592000: # More than 30 days
                 return ip
@@ -76,9 +76,9 @@ class Node(object):
                 oldestIP, oldestTimestamp = ip, timestamp
         return oldestIP
 
-    def addToNew(ipAddr, globalTime, peerIP):
-        bucket = mapToNewBucket(ipAddr, peerIP)
+    def addToNew(self, ipAddr, globalTime, peerIP):
+        bucket = self.mapToNewBucket(ipAddr, peerIP)
         if len(self.newTable[bucket]) == 64:
-            terribleIP = isTerrible(self.newTable[bucket])
+            terribleIP = self.isTerrible(self.newTable[bucket])
             del self.newTable[bucket][terribleIP]
         self.newTable[bucket][ipAddr] = globalTime

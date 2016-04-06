@@ -1,6 +1,6 @@
 import collections, random, Queue
 from constants import *
-from node import *
+from node import Node
 
 event = collections.namedtuple('Event', ['srcNode', 'destNode', 'eventType', 'info'])
 
@@ -10,17 +10,19 @@ class Network(object):
         self.globalTime = 0.0
 
         self.seederNodes = []
+        self.initNodes = []
         self.nodes = []
         self.ipToNodes = {}
         self.ipToNonDarkNodes = {}
-        self.IPs = []
+
+        self.IPs = [] # Currently taken IP addresses
 
         self.initializeNodes(numInitNodes)
-        self.hardcodedIPs = [node.ipV4Addr for node in initNodes]
+        self.hardcodedIPs = [node.ipV4Addr for node in self.initNodes]
 
         self.generateAllNodes(totalNodes - numInitNodes)
 
-    def assignIP():
+    def assignIP(self):
         ipTaken = True
         while ipTaken:
             newIP = '.'.join([str(random.randint(0, 255)) for _ in range(4)])
@@ -28,13 +30,13 @@ class Network(object):
         self.IPs.append(newIP)
         return newIP
 
-    def getRestartTime():
-        pass
+    def getRestartTime(self):
+        return random.randint(1, 80000) # Change later
 
     def initializeNodes(self, numInitNodes):
-        # Create all of the nodes
+        # Create initial nodes
         for i in range(numInitNodes):
-            newNode = new Node(self.assignIP())
+            newNode = Node(self.assignIP())
             self.ipToNodes[newNode.ipV4Addr] = newNode
             if newNode.nodeType != DARK:
                 self.ipToNonDarkNodes[newNode.ipV4Addr] = newNode
@@ -45,9 +47,10 @@ class Network(object):
                                     eventType = JOIN, 
                                     info = None)))
 
+        # Create seeder nodes
         for i in range(NUM_SEEDERS):
-            seederNode = new Node(self.assignIP(), nodeType = SEEDER)
-            seederNodes.append(newNode)
+            seederNode = Node(self.assignIP(), nodeType = SEEDER)
+            self.seederNodes.append(seederNode)
 
 
     def generateAllNodes(self, numNodes):
@@ -57,11 +60,11 @@ class Network(object):
             for ip in outgoingConnections:
                 self.ipToNodes[ip].incomingCnxs.append(self.initNodes[i].ipV4Addr)
 
-    def generateLatency():
-        pass
+    def generateLatency(self):
+        return random.random() / 2
 
-    def processNextEvent():
-        self.globalTime, eventEntry = eventQueue.get()
+    def processNextEvent(self):
+        self.globalTime, eventEntry = self.eventQueue.get()
         latency = self.generateLatency()
 
         src = eventEntry.srcNode
@@ -167,6 +170,6 @@ class Network(object):
                                                           eventType = CONNECT, 
                                                           info = None)))
             for ip in connections[8:]:
-                dest.addToNew(ip, src.ipV4Addr)
+                dest.addToNew(ip, self.globalTime, src.ipV4Addr)
         else:
             raise Exception("invalid event type")
