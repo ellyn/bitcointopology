@@ -7,8 +7,8 @@ class Node(object):
         self.nodeType = nodeType
         self.triedTable = [{} for _ in range(NUM_TRIED_BUCKETS)]
         self.newTable = [{} for _ in range(NUM_NEW_BUCKETS)]
-        self.incomingCxns = []
-        self.outgoingCxns = []
+        self.incomingCnxs = []
+        self.outgoingCnxs = []
 
     def mapToTriedBucket(node, ipAddr):
         temp = ipAddr.split('.')
