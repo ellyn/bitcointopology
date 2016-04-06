@@ -16,6 +16,8 @@ class Network(object):
         self.IPs = []
 
         self.initializeNodes(numInitNodes)
+        self.hardcodedIPs = [node.ipV4Addr for node in initNodes]
+        
         self.generateAllNodes(totalNodes - numInitNodes)
 
     def assignIP():
@@ -42,8 +44,6 @@ class Network(object):
                                     destNode = None, 
                                     eventType = JOIN, 
                                     info = None)))
-
-        hardcodedIPs = [node.ipV4Addr for node in initNodes]
 
         for i in range(NUM_SEEDERS):
             seederNode = new Node(self.assignIP(), nodeType = SEEDER)
