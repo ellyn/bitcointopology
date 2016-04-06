@@ -10,50 +10,50 @@ class Node(object):
         self.incomingCnxs = []
         self.outgoingCnxs = []
 
-    def mapToTriedBucket(node, ipAddr):
+    def mapToTriedBucket(ipAddr):
         temp = ipAddr.split('.')
         ipGroup = temp[0] + '.' + temp[1] # /16 group, i.e. first two numbers
-        rand = str(node.nonce)
+        rand = str(self.nonce)
         ival = hash(rand + ipAddr) % 4
         ibkt = hash(rand + ipGroup + str(ival)) % 64
         return ibkt
 
-    def addToTried(node, ipAddr, globalTime, dtMin = 0):
-        bucket = mapToTriedBucket(node, ipAddr)
-        if ipAddr in node.triedTable[bucket]:
+    def addToTried(ipAddr, globalTime, dtMin = 0):
+        bucket = mapToTriedBucket(ipAddr)
+        if ipAddr in self.triedTable[bucket]:
             # Only update if last message was > dtMin seconds ago.
-            if globalTime - node.triedTable[bucket][ipAddr] >= dtMin:
-                node.triedTable[bucket][ipAddr] = dtMin
+            if globalTime - self.triedTable[bucket][ipAddr] >= dtMin:
+                self.triedTable[bucket][ipAddr] = dtMin
         else:
-            if len(node.triedTable[bucket]) == 64:
+            if len(self.triedTable[bucket]) == 64:
                 # Bitcoin eviction: remove four random addresses, replace oldest with new & put oldest in new table.
                 indices = [random.randint(0, 63) for _ in range(4)]
                 oldestIP, oldestTimestamp = None, globalTime
-                IPs = node.triedTable[bucket].keys()
+                IPs = self.triedTable[bucket].keys()
                 for i in indices:
                     ip = IPs[i]
-                    timestamp = node.triedTable[bucket][ip]
+                    timestamp = self.triedTable[bucket][ip]
                     if timestamp < oldestTimestamp:
                         oldestIP, oldestTimestamp = ip, timestamp
-                del node.triedTable[bucket][oldestIP] 
-                node.triedTable[bucket][ipAddr] = globalTime
-                addToNew(ipToNodes[oldVal], ipAddr, globalTime, oldVal)
+                del self.triedTable[bucket][oldestIP] 
+                self.triedTable[bucket][ipAddr] = globalTime
+                addToNew(ipAddr, globalTime, oldVal)
 
-                if oldestIP in node.incomingCnxs:
-                    node.incomingCnxs.remove(oldestIP)
-                elif oldestIP in node.outgoingCnxs:
-                    node.outgoingCnxs.remove(oldestIP)
+                if oldestIP in self.incomingCnxs:
+                    self.incomingCnxs.remove(oldestIP)
+                elif oldestIP in self.outgoingCnxs:
+                    self.outgoingCnxs.remove(oldestIP)
             else:
-                node.triedTable[bucket][ipAddr] = globalTime
+                self.triedTable[bucket][ipAddr] = globalTime
 
-    def mapToNewBucket(node, ipAddr, peerIP):
+    def mapToNewBucket(ipAddr, peerIP):
         temp = ipAddr.split('.')
         ipGroup = temp[0] + '.' + temp[1]
 
         temp = peerIP.split('.')
         srcIPGroup = temp[0] + '.' + temp[1] 
 
-        rand = str(node.nonce)
+        rand = str(self.nonce)
         ival = hash(rand + ipGroup + srcIPGroup) % 32
         ibkt = hash(rand + srcIPGroup + str(ival)) % 256
         return ibkt
@@ -76,9 +76,9 @@ class Node(object):
                 oldestIP, oldestTimestamp = ip, timestamp
         return oldestIP
 
-    def addToNew(node, ipAddr, globalTime, peerIP):
-        bucket = mapToNewBucket(node, ipAddr, peerIP)
-        if len(node.newTable[bucket]) == 64:
-            terribleIP = isTerrible(node.newTable[bucket])
-            del node.newTable[bucket][terribleIP]
-        node.newTable[bucket][ipAddr] = globalTime
+    def addToNew(ipAddr, globalTime, peerIP):
+        bucket = mapToNewBucket(ipAddr, peerIP)
+        if len(self.newTable[bucket]) == 64:
+            terribleIP = isTerrible(self.newTable[bucket])
+            del self.newTable[bucket][terribleIP]
+        self.newTable[bucket][ipAddr] = globalTime
