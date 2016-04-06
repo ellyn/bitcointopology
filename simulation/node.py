@@ -1,8 +1,10 @@
 from constants import *
 
 class Node(object):
-    def __init__(self, ipV4Addr, nonce, nodeType = PEER):
+    def __init__(self, ipV4Addr, nodeType = PEER):
         self.nonce = random.randint(0, 65535)
+        self.ipV4Addr = ipV4Addr
+        self.nodeType = nodeType
         self.triedTable = [{} for _ in range(NUM_TRIED_BUCKETS)]
         self.newTable = [{} for _ in range(NUM_NEW_BUCKETS)]
         self.incomingCxns = []
@@ -16,8 +18,7 @@ class Node(object):
         ibkt = hash(rand + ipGroup + str(ival)) % 64
         return ibkt
 
-    def addToTried(node, ipAddr, dtMin = 0):
-        global globalTime
+    def addToTried(node, ipAddr, globalTime, dtMin = 0):
         bucket = mapToTriedBucket(node, ipAddr)
         if ipAddr in node.triedTable[bucket]:
             # Only update if last message was > dtMin seconds ago.
@@ -36,7 +37,7 @@ class Node(object):
                         oldestIP, oldestTimestamp = ip, timestamp
                 del node.triedTable[bucket][oldestIP] 
                 node.triedTable[bucket][ipAddr] = globalTime
-                addToNew(ipToNodes[oldVal], ipAddr, oldVal)
+                addToNew(ipToNodes[oldVal], ipAddr, globalTime, oldVal)
 
                 if oldestIP in node.incomingCnxs:
                     node.incomingCnxs.remove(oldestIP)
@@ -75,8 +76,7 @@ class Node(object):
                 oldestIP, oldestTimestamp = ip, timestamp
         return oldestIP
 
-    def addToNew(node, ipAddr, peerIP):
-        global globalTime
+    def addToNew(node, ipAddr, globalTime, peerIP):
         bucket = mapToNewBucket(node, ipAddr, peerIP)
         if len(node.newTable[bucket]) == 64:
             terribleIP = isTerrible(node.newTable[bucket])
