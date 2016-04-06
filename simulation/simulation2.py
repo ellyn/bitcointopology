@@ -1,7 +1,9 @@
 #!/usr/bin/env python2.7
 
+import argparse, time, pickle
+
 from constants import *
-import argparse
+from network import Network
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -28,12 +30,43 @@ parser.add_argument(
   help='Set dark node probability (fractional) to DARKNODEPROB (default: 0.5)',
   default=0.5,
   type=float)
+parser.add_argument(
+  '-f',
+  '--filename',
+  help='Filename to write final network state to at end of simulation',
+  default='state.pickle',
+  type=str)
 
+def executeSimulation(numNodes, simulationLength, latencyType, darkNodeProb, outFile):
 
-def executeSimulation(numNodes, simulationLength, latencyType, darkNodeProb):
+  realStart = time.time()
+
   print('Simulation begun with {} nodes. Will run for {} seconds. Latency type: {}. Dark node probability: {}'.format(
     numNodes, simulationLength, latencyType, darkNodeProb))
 
+  # Initialize network.
+  network = Network(numInitNodes = numNodes, latencyInfo = latencyType, darkNodeProb = darkNodeProb)
+
+  # Run simulation until time over.
+  while network.globalTime < simulationLength:
+    network.processNextEvent()
+
+  realEnd = time.time()
+
+  print('Simulation done in {} seconds. Writing out network state & initialization parameters to {}.'.format(realEnd - realStart, outFile))
+
+  # Write out results.
+  # TODO Add network state. Can't pickle dump the whole object (priority queue etc.). Presumably we need a node list & the event log.
+  with open(outFile, 'wb') as outFile:
+    pickle.dump({
+      'randomSeed': randomSeed,
+      'numNodes': numNodes, 
+      'latencyType': latencyType,
+      'darkNodeProb': darkNodeProb
+    }, outFile)
+
+  print('Network state written. Terminating.') 
+
 if __name__ == '__main__':
   args = parser.parse_args()
-  executeSimulation(args.nodes, args.length, args.latencyType, args.darkNodeProb)
+  executeSimulation(args.nodes, args.length, args.latencyType, args.darkNodeProb, args.filename)
