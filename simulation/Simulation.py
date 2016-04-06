@@ -65,7 +65,8 @@ def addToTried(node, ipAddr, dtMin = 0):
                     oldestIP, oldestTimestamp = ip, timestamp
             del node.triedTable[bucket][oldestIP] 
             node.triedTable[bucket][ipAddr] = globalTime
-            addToNew(ipToNodes[oldVal], ipAddr, oldVal)
+            # just reference node instead of ipToNodes[oldestIP]?
+            addToNew(ipToNodes[oldestIP], ipAddr, oldVal)
 
             if oldestIP in node.incomingCnxs:
                 node.incomingCnxs.remove(oldestIP)
