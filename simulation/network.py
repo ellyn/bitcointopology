@@ -50,7 +50,7 @@ class Network(object):
         # Create seeder nodes
         for i in range(NUM_SEEDERS):
             seederNode = Node(self.assignIP(), nodeType = SEEDER)
-            ipToNodes[seederNode.ipV4Addr] = seederNode
+            self.ipToNodes[seederNode.ipV4Addr] = seederNode
             self.seederNodes.append(seederNode)
 
         # Setup connections for initial nodes
@@ -70,7 +70,7 @@ class Network(object):
         for i in range(numNodes):
             newNode = Node(self.assignIP())
             self.nodes.append(newNode)
-            ipToNodes[newNode.ipV4Addr] = newNode
+            self.ipToNodes[newNode.ipV4Addr] = newNode
 
             wakeTime = self.getWakeTime(newNode)
             self.eventQueue.put((wakeTime, event(srcNode = newNode, 
@@ -144,13 +144,14 @@ class Network(object):
                 probAccept = min(1, (1.2**numRejects) / float(1 + t))
                 accepted = random.random() < probAccept
                 numRejects += 1
+
             self.eventQueue.put((scheduledTime, event(srcNode = dest, 
                                                       destNode = self.ipToNodes[ip],
                                                       eventType = CONNECT, 
                                                       info = None)))
 
         # JOIN: A node is requesting to join the network. 
-        #        Randomly choose a seeder to contact for connection information.
+        #        Randomly chooses a seeder to contact for connection information.
         #
         # src = node that is requesting to join
         elif eventEntry.eventType == JOIN:
@@ -167,6 +168,8 @@ class Network(object):
         elif eventEntry.eventType == CONNECT:
             if len(dest.incomingCnxs) <= MAX_INCOMING:
                 src.addToTried(dest.ipV4Addr, self.globalTime)
+
+                dest.learnIP(src.ipV4Addr, src.ipV4Addr)
                 dest.addToTried(src.ipV4Addr, self.globalTime)
                 src.outgoingCnxs.append(dest.ipV4Addr)
                 dest.incomingCnxs.append(src.ipV4Addr)
@@ -181,15 +184,19 @@ class Network(object):
         # src = the node that rejected the connection request
         # dest = the node whose request failed
         elif eventEntry.eventType == CONNECTION_FAILURE:
+            dest.incrementFailedAttempts(src.ipV4Addr)
+
             numTriedEntries = sum([len(bucket) for bucket in dest.triedTable])
             numNewEntries = sum([len(bucket) for bucket in dest.newTable])
             rho = float(numTriedEntries) / numNewEntries
             omega = len(dest.outgoingCnxs)
-            numRejects = 0
-            accepted = False
+
             PrTried = (rho**0.5) * (9 - omega) 
             PrTried /= (omega + 1) + (rho**0.5) * (9 - omega) 
             table = src.triedTable if random.random() < PrTried else src.newTable
+
+            numRejects = 0
+            accepted = False
             ip = None
             while not accepted:
                 bucketNum = random.randint(0, len(table) - 1)
@@ -199,7 +206,9 @@ class Network(object):
                 t = ((globalTime - timestamp) / 600) * 10
                 probAccept = min(1, (1.2**numRejects) / float(1+t))
                 accepted = random.random() < probAccept
-                numRejects += 1
+                if not accepted:
+                    numRejects += 1
+
             self.eventQueue.put((scheduledTime, event(srcNode = dest,
                                                       destNode = self.ipToNodes[ip],
                                                       eventType = CONNECT,
@@ -225,11 +234,13 @@ class Network(object):
             connections = eventEntry.info[:]
             random.shuffle(connections)
             for ip in connections[:MAX_OUTGOING]:
+                dest.learnIP(ip, src.ipV4Addr)
                 self.eventQueue.put((scheduledTime, event(srcNode = dest, 
                                                           destNode = self.ipToNodes[ip], 
                                                           eventType = CONNECT, 
                                                           info = None)))
             for ip in connections[MAX_OUTGOING:]:
-                dest.addToNew(ip, self.globalTime, src.ipV4Addr)
+                dest.learnIP(ip, src.ipV4Addr)
+                dest.addToNew(ip, self.globalTime)
         else:
             raise Exception("Invalid event type")
