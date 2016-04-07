@@ -104,10 +104,15 @@ class Node(object):
     # or has too many failed connection attempts
     def isTerrible(self, bucket):
         for ip in bucket:
-            # If the address is more than 30 days old
+            # Address is more than 30 days old
             if globalTime - bucket[ip] == 2592000:
                 return ip
-        # If there is no terrible address, return addr via bitcoin eviction
+
+            # Too many failed connection attempts
+            if self.ipToAddr[ip].nAttempts >= MAX_RETRIES:
+                return ip
+
+        # If none are terrible, return an address via bitcoin eviction
         return self.bitcoinEviction(bucket)
 
     # Inserts ipAddr into the new table
