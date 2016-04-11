@@ -255,8 +255,10 @@ class Network(object):
       for node in self.nodes:
         graph.add_node(node.ipV4Addr)
       for node in self.nodes:
-        for bucket, connIPAddr in itertools.chain(*[bucket.keys() for bucket in node.triedTable]):
-          graph.add_edge(node.ipV4Addr, connIPAddr)
+        for inConn in node.incomingCnxs:
+          graph.add_edge(inConn, node.ipV4Addr)
+        for outConn in node.outgoingCnxs:
+          graph.add_edge(node.ipV4Addr, outConn)
       return graph 
 
     # Termination Condition: Global Time
