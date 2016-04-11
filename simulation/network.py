@@ -1,4 +1,4 @@
-import collections, itertools, Queue
+import collections, random, itertools, Queue
 import networkx as nx
 import math
 from constants import *
