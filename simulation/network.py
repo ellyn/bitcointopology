@@ -255,6 +255,20 @@ class Network(object):
     # TODO Maybe this could be constructed incrementally?
     def getGraph(self):
         graph = nx.Graph()
+        # import time
+        # start = time.time()
+
+        '''
+        adj_list = []
+        for node in self.nodes:
+            for inConn in node.incomingCnxs:
+              adj_list.append((inConn, node.ipV4Addr))
+            for outConn in node.outgoingCnxs:
+              adj_list.append((node.ipV4Addr, outConn))
+        open('adj_list.tsv', 'w').write('\n'.join(['{} {}'.format(x, y) for (x, y) in adj_list]))
+        graph = nx.read_adjlist('adj_list.tsv')
+        '''
+        
         for node in self.nodes:
             graph.add_node(node.ipV4Addr)
         for node in self.nodes:
@@ -262,6 +276,9 @@ class Network(object):
                 graph.add_edge(inConn, node.ipV4Addr, key=0)
             for outConn in node.outgoingCnxs:
                 graph.add_edge(node.ipV4Addr, outConn, key=0)
+
+        # end = time.time()
+        # print('Graph created in {} seconds.'.format(end - start))
         return graph 
 
     # Termination Condition: Global Time
@@ -290,7 +307,10 @@ class Network(object):
     # (in case the network isn't connected)
     def getLCCDiameter(self):
         graph = self.getGraph()
-        lcc = list(max(nx.connected_components(graph), key = len))
+        connected = list(nx.connected_components(graph))
+        if len(connected) == 0:
+          return -1
+        lcc = list(max(connected, key = len))
         newGraph = nx.Graph()
         for node in lcc:
             newGraph.add_node(node)
