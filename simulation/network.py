@@ -256,9 +256,9 @@ class Network(object):
         graph.add_node(node.ipV4Addr)
       for node in self.nodes:
         for inConn in node.incomingCnxs:
-          graph.add_edge(inConn, node.ipV4Addr)
+          graph.add_edge(inConn, node.ipV4Addr, key=0)
         for outConn in node.outgoingCnxs:
-          graph.add_edge(node.ipV4Addr, outConn)
+          graph.add_edge(node.ipV4Addr, outConn, key=0)
       return graph 
 
     # Termination Condition: Global Time
