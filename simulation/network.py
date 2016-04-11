@@ -166,7 +166,9 @@ class Network(object):
         # src = node that is requesting the connection
         # dest = node that is receiving this request
         elif eventEntry.eventType == CONNECT:
-            if len(dest.incomingCnxs) <= MAX_INCOMING:
+            destHasRoom = len(dest.incomingCnxs) < MAX_INCOMING
+            srcHasRoom = len(src.outgoingCnxs) < MAX_OUTGOING
+            if destHasRoom & srcHasRoom:
                 src.addToTried(dest.ipV4Addr, self.globalTime)
 
                 dest.learnIP(src.ipV4Addr, src.ipV4Addr)
