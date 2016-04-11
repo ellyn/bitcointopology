@@ -206,7 +206,6 @@ class Network(object):
             while not accepted:
                 bucketNum = random.randint(0, len(table) - 1)
                 if len(table[bucketNum]) > 0:
-                    print len(table[bucketNum])
                     bucketPos = random.randint(0, len(table[bucketNum]) - 1)
                     ip = table[bucketNum].keys()[bucketPos]
                     timestamp = table[bucketNum][ip]
