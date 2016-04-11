@@ -1,5 +1,6 @@
-import collections, random, itertools, Queue
+import collections, itertools, Queue
 import networkx as nx
+import math
 from constants import *
 from node import Node
 
@@ -32,8 +33,9 @@ class Network(object):
         self.IPs.append(newIP)
         return newIP
 
-    def getRestartTime(self):
-        return random.randint(1, 80000) # Arbitrary placeholder; change later
+    def getRestartTime(self):#Want an exponential distribution with 25 percent of nodes dropping every 10 hours
+        lamd = math.log(1-RESTART_PERCENTAGE)/(-1 * float(RESTART_TIMEFRAME))
+        return random.expovariate(lamd)
 
     def initializeNodes(self, numInitNodes):
         # Create initial nodes
