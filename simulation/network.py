@@ -1,4 +1,5 @@
-import collections, random, Queue
+import collections, random, itertools, Queue
+import networkx as nx
 from constants import *
 from node import Node
 
@@ -246,3 +247,61 @@ class Network(object):
                 dest.addToNew(ip, self.globalTime)
         else:
             raise Exception("Invalid event type")
+    
+    # Return a graph of the network
+    # TODO Maybe this could be constructed incrementally?
+    def getGraph(self):
+      graph = nx.Graph()
+      for node in self.nodes:
+        graph.add_node(node.ipV4Addr)
+      for node in self.nodes:
+        for bucket, connIPAddr in itertools.chain(*[bucket.keys() for bucket in node.triedTable]):
+          graph.add_edge(node.ipV4Addr, connIPAddr)
+      return graph 
+
+    # Termination Condition: Global Time
+    # Terminate once the network has persisted for a certain length of time.
+    def getGlobalTime(self):
+      return self.globalTime
+
+    # Termination Condition: # Nodes
+    # Terminate once the network has reached a certain size.
+    def getNumNodes(self):
+      return len(self.nodes)
+
+
+    # Termination Condition: Diameter
+    # Terminate once the network has reached a given diameter.
+    def getDiameter(self):
+      graph = self.getGraph()
+      try:
+        diameter = nx.diameter(graph)
+      # NetworkX will throw an exception if the graph is not connected (~ infinite diameter)
+      except nx.NetworkXError:
+        return -1
+
+    # Termination Condition: Diameter of largest connected component
+    # Terminate once the network's largest connected component has reached a given diameter
+    # (in case the network isn't connected)
+    def getLCCDiameter(self):
+      graph = self.getGraph()
+      lcc = list(max(nx.connected_components(graph), key = len))
+      newGraph = nx.Graph()
+      for node in lcc:
+        newGraph.add_node(node)
+      for node in lcc:
+        for neighbor in graph.neighbors(node):
+          newGraph.add_edge(node, neighbor)
+      return nx.diameter(newGraph)
+
+    def shouldTerminate(self, condition, value):
+      if condition == TERMINATION_COND_TIME:
+        return self.getGlobalTime() >= value
+      elif condition == TERMINATION_COND_NUM_NODES:
+        return self.getNumNodes() >= value
+      elif condition == TERMINATION_COND_DIAMETER:
+        return self.getDiameter() >= value
+      elif condition == TERMINATION_COND_LCC_DIAMETER:
+        return self.getLCCDiameter() >= value
+      else:
+        raise Exception('Unknown termination condition!')

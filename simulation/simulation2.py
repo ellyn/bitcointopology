@@ -14,13 +14,18 @@ parser.add_argument(
   default=800,
   type=int)
 parser.add_argument(
-  '-l',
-  '--length',
-  help='Run simulation for LENGTH seconds (default: 86400)',
+  '-t',
+  '--termination',
+  help='Run simulation with TERMINATION termination condition (see constants.py)',
   default=86400,
   type=int)
 parser.add_argument(
-  '-t',
+  '-v',
+  '--value',
+  help='Run simulation with VALUE termination value (see constants.py)',
+  type=int)
+parser.add_argument(
+  '-l',
   '--latencyType',
   help='Use LATENCYTYPE type of latency (default: 0 - uniform)',
   default=UNIFORM,
@@ -38,19 +43,20 @@ parser.add_argument(
   default='state.pickle',
   type=str)
 
-def executeSimulation(numNodes, simulationLength, latencyType, darkNodeProb, outFile):
+def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, outFile):
 
   realStart = time.time()
 
-  print('Simulation begun with {} nodes. Will run for {} seconds. Latency type: {}. Dark node probability: {}'.format(
-    numNodes, simulationLength, latencyType, darkNodeProb))
+  print('Simulation begun with {} nodes. Latency type: {}. Dark node probability: {}'.format(
+    numNodes, latencyType, darkNodeProb))
 
   # Initialize network.
   network = Network(numInitNodes = NUM_INIT_NODES, totalNodes = numNodes, latencyInfo = latencyType, darkNodeProb = darkNodeProb)
 
   # Run simulation until time over.
-  while network.globalTime < simulationLength:
+  while not network.shouldTerminate(termCond, termVal):
     network.processNextEvent()
+    print(network.getLCCDiameter())
 
   realEnd = time.time()
 
@@ -70,4 +76,4 @@ def executeSimulation(numNodes, simulationLength, latencyType, darkNodeProb, out
 
 if __name__ == '__main__':
   args = parser.parse_args()
-  executeSimulation(args.nodes, args.length, args.latencyType, args.darkNodeProb, args.filename)
+  executeSimulation(args.nodes, args.latencyType, args.darkNodeProb, args.termination, args.value, args.filename)
