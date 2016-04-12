@@ -162,8 +162,6 @@ class Network(object):
         #           else "outgoing"
         elif eventEntry.eventType == DROP:
             ipToRemove = src.ipV4Addr
-            bucket = dest.mapToTriedBucket(ipToRemove)
-            del dest.triedTable[bucket][ipToRemove]
 
             if eventEntry.info == "incoming":
                 dest.incomingCnxs.remove(ipToRemove)
