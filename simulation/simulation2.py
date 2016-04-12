@@ -17,12 +17,13 @@ parser.add_argument(
   '-t',
   '--termination',
   help='Run simulation with TERMINATION termination condition (see constants.py)',
-  default=86400,
+  default=TERMINATION_COND_TIME,
   type=int)
 parser.add_argument(
   '-v',
   '--value',
   help='Run simulation with VALUE termination value (see constants.py)',
+  default=86400,
   type=int)
 parser.add_argument(
   '-l',

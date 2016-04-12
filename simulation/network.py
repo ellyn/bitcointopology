@@ -228,14 +228,15 @@ class Network(object):
             ip = None
             while not accepted:
                 bucketNum = random.randint(0, len(table) - 1)
-                bucketPos = random.randint(0, len(table[bucketNum]) - 1)
-                ip = table[bucketNum].keys()[bucketPos]
-                timestamp = table[bucketNum][ip]
-                t = ((globalTime - timestamp) / 600) * 10
-                probAccept = min(1, (1.2**numRejects) / float(1+t))
-                accepted = random.random() < probAccept
-                if not accepted:
-                    numRejects += 1
+                if len(table[bucketNum]) > 0:
+                    bucketPos = random.randint(0, len(table[bucketNum]) - 1)
+                    ip = table[bucketNum].keys()[bucketPos]
+                    timestamp = table[bucketNum][ip]
+                    t = ((globalTime - timestamp) / 600) * 10
+                    probAccept = min(1, (1.2**numRejects) / float(1+t))
+                    accepted = random.random() < probAccept
+                    if not accepted:
+                        numRejects += 1
 
             self.eventQueue.put((scheduledTime, event(srcNode = dest,
                                                       destNode = self.ipToNodes[ip],
@@ -276,59 +277,79 @@ class Network(object):
     # Return a graph of the network
     # TODO Maybe this could be constructed incrementally?
     def getGraph(self):
-      graph = nx.Graph()
-      for node in self.nodes:
-        graph.add_node(node.ipV4Addr)
-      for node in self.nodes:
-        for inConn in node.incomingCnxs:
-          graph.add_edge(inConn, node.ipV4Addr, key=0)
-        for outConn in node.outgoingCnxs:
-          graph.add_edge(node.ipV4Addr, outConn, key=0)
-      return graph 
+        graph = nx.Graph()
+        # import time
+        # start = time.time()
+
+        '''
+        adj_list = []
+        for node in self.nodes:
+            for inConn in node.incomingCnxs:
+              adj_list.append((inConn, node.ipV4Addr))
+            for outConn in node.outgoingCnxs:
+              adj_list.append((node.ipV4Addr, outConn))
+        open('adj_list.tsv', 'w').write('\n'.join(['{} {}'.format(x, y) for (x, y) in adj_list]))
+        graph = nx.read_adjlist('adj_list.tsv')
+        '''
+        
+        for node in self.nodes:
+            graph.add_node(node.ipV4Addr)
+        for node in self.nodes:
+            for inConn in node.incomingCnxs:
+                graph.add_edge(inConn, node.ipV4Addr, key=0)
+            for outConn in node.outgoingCnxs:
+                graph.add_edge(node.ipV4Addr, outConn, key=0)
+
+        # end = time.time()
+        # print('Graph created in {} seconds.'.format(end - start))
+        return graph 
 
     # Termination Condition: Global Time
     # Terminate once the network has persisted for a certain length of time.
     def getGlobalTime(self):
-      return self.globalTime
+        return self.globalTime
 
     # Termination Condition: # Nodes
     # Terminate once the network has reached a certain size.
     def getNumNodes(self):
-      return len(self.nodes)
+        return len(self.nodes)
 
 
     # Termination Condition: Diameter
     # Terminate once the network has reached a given diameter.
     def getDiameter(self):
-      graph = self.getGraph()
-      try:
-        diameter = nx.diameter(graph)
-      # NetworkX will throw an exception if the graph is not connected (~ infinite diameter)
-      except nx.NetworkXError:
-        return -1
+        graph = self.getGraph()
+        try:
+            diameter = nx.diameter(graph)
+        # NetworkX will throw an exception if the graph is not connected (~ infinite diameter)
+        except nx.NetworkXError:
+            return -1
 
     # Termination Condition: Diameter of largest connected component
     # Terminate once the network's largest connected component has reached a given diameter
     # (in case the network isn't connected)
     def getLCCDiameter(self):
-      graph = self.getGraph()
-      lcc = list(max(nx.connected_components(graph), key = len))
-      newGraph = nx.Graph()
-      for node in lcc:
-        newGraph.add_node(node)
-      for node in lcc:
-        for neighbor in graph.neighbors(node):
-          newGraph.add_edge(node, neighbor)
-      return nx.diameter(newGraph)
+        graph = self.getGraph()
+        connected = list(nx.connected_components(graph))
+        if len(connected) == 0:
+          return -1
+        lcc = list(max(connected, key = len))
+        newGraph = nx.Graph()
+        for node in lcc:
+            newGraph.add_node(node)
+        for node in lcc:
+            for neighbor in graph.neighbors(node):
+                newGraph.add_edge(node, neighbor)
+        return nx.diameter(newGraph)
 
     def shouldTerminate(self, condition, value):
-      if condition == TERMINATION_COND_TIME:
-        return self.getGlobalTime() >= value
-      elif condition == TERMINATION_COND_NUM_NODES:
-        return self.getNumNodes() >= value
-      elif condition == TERMINATION_COND_DIAMETER:
-        return self.getDiameter() >= value
-      elif condition == TERMINATION_COND_LCC_DIAMETER:
-        return self.getLCCDiameter() >= value
-      else:
-        raise Exception('Unknown termination condition!')
+        if condition == TERMINATION_COND_TIME:
+            return self.getGlobalTime() >= value
+        elif condition == TERMINATION_COND_NUM_NODES:
+            return self.getNumNodes() >= value
+        elif condition == TERMINATION_COND_DIAMETER:
+            return self.getDiameter() >= value
+        elif condition == TERMINATION_COND_LCC_DIAMETER:
+            return self.getLCCDiameter() >= value
+        else:
+            raise Exception('Unknown termination condition!')
