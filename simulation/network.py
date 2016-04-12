@@ -68,7 +68,7 @@ class Network(object):
 
     def getWakeTime(self, node):
         lamd = 1 / float(MEAN_START_TIME)
-        return random.expovariate(lamd)
+        return random.expovariate(lamd) + self.globalTime
 
 
     def generateAllNodes(self, numNodes):
