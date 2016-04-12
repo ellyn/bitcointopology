@@ -139,11 +139,11 @@ class Network(object):
                                                           info = "incoming")))
             src.incomingCnxs = 0
             src.outgoingCnxs = 0
-            self.eventQueue.put(scheduledTime + latency, event(srcNode = src,
+            self.eventQueue.put((scheduledTime + latency, event(srcNode = src,
                                                                destNode = None,
                                                                eventType = REJOIN,
-                                                               info = None))
-        # REJOING: A node rejoins the network after restarting and tries to make 8 connections,
+                                                               info = None)))
+        # REJOIN: A node rejoins the network after restarting and tries to make 8 connections,
         #          similarly to how it would if all of its connections had dropped. 
         elif eventEntry.eventType == REJOIN:
             while src.outgoingCnxs <= MAX_OUTGOING:
