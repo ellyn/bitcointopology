@@ -33,9 +33,10 @@ class Network(object):
         self.IPs.append(newIP)
         return newIP
 
-    def getRestartTime(self):#Want an exponential distribution with 25 percent of nodes dropping every 10 hours
+    def getRestartTime(self):# Want an exponential distribution with 25 percent of nodes dropping every 10 hours
         lamd = math.log(1-RESTART_PERCENTAGE)/(-1 * float(RESTART_TIMEFRAME))
-        return random.expovariate(lamd)
+        return random.expovariate(lamd) + self.globalTime
+        
 
     def initializeNodes(self, numInitNodes):
         # Create initial nodes
@@ -47,7 +48,7 @@ class Network(object):
             self.initNodes.append(newNode)
             self.eventQueue.put((self.getRestartTime(), event(srcNode = newNode,    
                                                               destNode = None, 
-                                                              eventType = JOIN, 
+                                                              eventType = RESTART, 
                                                               info = None)))
 
         # Create seeder nodes
@@ -66,7 +67,8 @@ class Network(object):
 
 
     def getWakeTime(self, node):
-        return 500 # Change later
+        lamd = 1 / float(MEAN_START_TIME)
+        return random.expovariate(lamd)
 
 
     def generateAllNodes(self, numNodes):
@@ -84,6 +86,34 @@ class Network(object):
     def generateLatency(self):
         return random.random() / 2 # Change later
 
+    def addCxns(self,node):
+        numTriedEntries = sum([len(bucket) for bucket in node.triedTable])
+        numNewEntries = sum([len(bucket) for bucket in node.newTable])
+
+        rho = float(numTriedEntries) / numNewEntries
+        omega = len(node.outgoingCnxs)
+        numRejects = 0
+        accepted = False
+
+        PrTried = (rho**0.5) * (9 - omega) 
+        PrTried /= (omega + 1) + (rho**0.5) * (9 - omega) 
+
+        table = node.triedTable if random.random() < PrTried else node.newTable
+        ip = None
+        while not accepted:
+            bucketNum = random.randint(0, len(table) - 1)
+            bucketPos = random.randint(0, len(table[bucketNum]) - 1)
+            ip = table[bucketNum].keys()[bucketPos]
+            timestamp = table[bucketNum][ip]
+            t = ((self.globalTime - timestamp) / 600) * 10
+            probAccept = min(1, (1.2**numRejects) / float(1 + t))
+            accepted = random.random() < probAccept
+            numRejects += 1
+
+        self.eventQueue.put((scheduledTime, event(srcNode = node, 
+                                                  destNode = self.ipToNodes[ip],
+                                                  eventType = CONNECT, 
+                                                  info = None)))
     def processNextEvent(self):
         self.globalTime, eventEntry = self.eventQueue.get()
         latency = self.generateLatency()
@@ -107,6 +137,21 @@ class Network(object):
                                                           destNode = self.ipToNodes[ip],
                                                           eventType = DROP, 
                                                           info = "incoming")))
+            src.incomingCnxs = 0
+            src.outgoingCnxs = 0
+            self.eventQueue.put(scheduledTime + latency, event(srcNode = src,
+                                                               destNode = None,
+                                                               eventType = REJOIN,
+                                                               info = None))
+        # REJOING: A node rejoins the network after restarting and tries to make 8 connections,
+        #          similarly to how it would if all of its connections had dropped. 
+        elif eventEntry.eventType == REJOIN:
+            while src.outgoingCnxs <= MAX_OUTGOING:
+                self.addCxns(src)
+            self.eventQueue.put((self.getRestartTime(),event(srcNode = src,
+                                                            destNode = None,
+                                                            eventType = RESTART,
+                                                            info = None)))
 
         # DROP: A node is notified that one of its connections was dropped 
         #        and updates its list of connections accordingly.
@@ -125,36 +170,10 @@ class Network(object):
             else:
                 dest.outgoingCnxs.remove(ipToRemove)
 
-            numTriedEntries = sum([len(bucket) for bucket in dest.triedTable])
-            numNewEntries = sum([len(bucket) for bucket in dest.newTable])
-
-            rho = float(numTriedEntries) / numNewEntries
-            omega = len(dest.outgoingCnxs)
-            numRejects = 0
-            accepted = False
-
-            PrTried = (rho**0.5) * (9 - omega) 
-            PrTried /= (omega + 1) + (rho**0.5) * (9 - omega) 
-
-            table = src.triedTable if random.random() < PrTried else src.newTable
-            ip = None
-            while not accepted:
-                bucketNum = random.randint(0, len(table) - 1)
-                bucketPos = random.randint(0, len(table[bucketNum]) - 1)
-                ip = table[bucketNum].keys()[bucketPos]
-                timestamp = table[bucketNum][ip]
-                t = ((self.globalTime - timestamp) / 600) * 10
-                probAccept = min(1, (1.2**numRejects) / float(1 + t))
-                accepted = random.random() < probAccept
-                numRejects += 1
-
-            self.eventQueue.put((scheduledTime, event(srcNode = dest, 
-                                                      destNode = self.ipToNodes[ip],
-                                                      eventType = CONNECT, 
-                                                      info = None)))
-
+            self.addCxns(dest)
         # JOIN: A node is requesting to join the network. 
         #        Randomly chooses a seeder to contact for connection information.
+        #        Additionally schedules a time for the node to restart
         #
         # src = node that is requesting to join
         elif eventEntry.eventType == JOIN:
@@ -163,6 +182,10 @@ class Network(object):
                                                       destNode = seeder, 
                                                       eventType = REQUEST_CONNECTION_INFO, 
                                                       info = None)))
+            self.eventQueue.put((self.getRestartTime(),event(srcNode = src,
+                                                            destNode = None,
+                                                            eventType = RESTART,
+                                                            info = None)))
 
         # CONNECT: A node is requesting to connect to another node.
         # 
