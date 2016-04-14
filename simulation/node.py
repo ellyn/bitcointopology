@@ -23,6 +23,10 @@ class Node(object):
         # Only contains entries for IP addresses that the Node has learned
         self.ipToAddr = {}
 
+        # For seeder nodes only: List of known IPs after crawling Bitcoin network
+        if nodeType == SEEDER:
+            self.knownIPs = []
+
     # Called when discovering an IP and creates an AddressInfo object for the IP
     # ip is the IP that was discovered
     # sourceIP is the IP from which Node learned ip
@@ -126,3 +130,23 @@ class Node(object):
             terribleIP = self.isTerrible(self.newTable[bucket])
             del self.newTable[bucket][terribleIP]
         self.newTable[bucket][ipAddr] = globalTime
+
+    # Adds ip to list of incoming connections. Raises exception if dark matter node
+    def addToIncomingCnxs(self, ip):
+        if self.nodeType != DARK:
+            self.incomingCnxs.append(ip)
+        else:
+            raise Exception("Trying to add incoming connection to dark matter node")
+
+    # Adds ip to list of outgoing connections
+    def addToOutgoingCnxs(self, ip):
+        self.outgoingCnxs.append(ip)
+
+    # For seeder nodes only: Updates its knowledge of the Bitcoin network
+    def updateNetworkInfo(self, ipList):
+        self.knownIPs = ipList
+
+    # For seeder nodes only: Returns list of IP addresses as result of DNS query
+    def getIPsForQuery(self):
+        print len(self.knownIPs)
+        return random.sample(self.knownIPs, DNS_QUERY_SIZE)

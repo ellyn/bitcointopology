@@ -11,6 +11,7 @@ class Network(object):
                         latencyInfo = None, darkNodeProb = 0.5):
         self.eventQueue = Queue.PriorityQueue()
         self.globalTime = 0.0
+        self.darkNodeProb = darkNodeProb
 
         self.seederNodes = []
         self.initNodes = []
@@ -19,6 +20,8 @@ class Network(object):
         self.ipToNonDarkNodes = {}
 
         self.IPs = [] # Currently taken IP addresses by nodes in network
+
+        self.lastSeederCrawlTime = 0.0
 
         self.initializeNodes(numInitNodes)
         self.hardcodedIPs = [node.ipV4Addr for node in self.initNodes]
@@ -34,17 +37,15 @@ class Network(object):
         return newIP
 
     def getRestartTime(self):# Want an exponential distribution with 25 percent of nodes dropping every 10 hours
-        lamd = math.log(1-RESTART_PERCENTAGE)/(-1 * float(RESTART_TIMEFRAME))
+        lamd = math.log(1 - RESTART_PERCENTAGE) / (-1 * float(RESTART_TIMEFRAME))
         return random.expovariate(lamd) + self.globalTime
-        
 
     def initializeNodes(self, numInitNodes):
         # Create initial nodes
         for i in range(numInitNodes):
             newNode = Node(self.assignIP())
             self.ipToNodes[newNode.ipV4Addr] = newNode
-            if newNode.nodeType != DARK:
-                self.ipToNonDarkNodes[newNode.ipV4Addr] = newNode
+            self.ipToNonDarkNodes[newNode.ipV4Addr] = newNode
             self.initNodes.append(newNode)
             self.eventQueue.put((self.getRestartTime(), event(srcNode = newNode,    
                                                               destNode = None, 
@@ -63,19 +64,22 @@ class Network(object):
             outgoingCnxs = [n.ipV4Addr for n in random.sample(connections, MAX_OUTGOING)]
             self.initNodes[i].outgoingCnxs = outgoingCnxs
             for ip in outgoingCnxs:
-                self.ipToNodes[ip].incomingCnxs.append(self.initNodes[i].ipV4Addr)
+                self.ipToNodes[ip].addToIncomingCnxs(self.initNodes[i].ipV4Addr)
 
+        self.simulateSeederCrawl()
 
     def getWakeTime(self, node):
         lamd = 1 / float(MEAN_START_TIME)
         return random.expovariate(lamd) + self.globalTime
 
-
     def generateAllNodes(self, numNodes):
         for i in range(numNodes):
-            newNode = Node(self.assignIP())
+            nType = DARK if random.random() <= self.darkNodeProb else PEER
+            newNode = Node(self.assignIP(), nodeType=nType)
             self.nodes.append(newNode)
             self.ipToNodes[newNode.ipV4Addr] = newNode
+            if newNode.nodeType != DARK:
+                self.ipToNonDarkNodes[newNode.ipV4Addr] = newNode
 
             wakeTime = self.getWakeTime(newNode)
             self.eventQueue.put((wakeTime, event(srcNode = newNode, 
@@ -114,10 +118,25 @@ class Network(object):
                                                   destNode = self.ipToNodes[ip],
                                                   eventType = CONNECT, 
                                                   info = None)))
+
+    def simulateSeederCrawl(self):
+        # Collect IP addresses of all reachable nodes
+        network = []
+        for ip in self.ipToNonDarkNodes:
+            if self.ipToNodes[ip].incomingCnxs > []:
+                network.append(ip)
+
+        for seeder in self.seederNodes:
+            seeder.updateNetworkInfo(network)
+
     def processNextEvent(self):
         self.globalTime, eventEntry = self.eventQueue.get()
-        latency = self.generateLatency()
 
+        if self.lastSeederCrawlTime - self.globalTime >= TIME_BETWEEN_CRAWLS:
+            self.simulateSeederCrawl()
+            self.lastSeederCrawlTime = self.globalTime
+
+        latency = self.generateLatency()
         scheduledTime = self.globalTime + latency
 
         src = eventEntry.srcNode
@@ -137,21 +156,22 @@ class Network(object):
                                                           destNode = self.ipToNodes[ip],
                                                           eventType = DROP, 
                                                           info = "incoming")))
-            src.incomingCnxs = 0
-            src.outgoingCnxs = 0
+            src.incomingCnxs = []
+            src.outgoingCnxs = []
             self.eventQueue.put((scheduledTime + latency, event(srcNode = src,
-                                                               destNode = None,
-                                                               eventType = REJOIN,
-                                                               info = None)))
+                                                                destNode = None,
+                                                                eventType = REJOIN,
+                                                                info = None)))
+
         # REJOIN: A node rejoins the network after restarting and tries to make 8 connections,
         #          similarly to how it would if all of its connections had dropped. 
         elif eventEntry.eventType == REJOIN:
             while src.outgoingCnxs <= MAX_OUTGOING:
                 self.addCxns(src)
             self.eventQueue.put((self.getRestartTime(),event(srcNode = src,
-                                                            destNode = None,
-                                                            eventType = RESTART,
-                                                            info = None)))
+                                                             destNode = None,
+                                                             eventType = RESTART,
+                                                             info = None)))
 
         # DROP: A node is notified that one of its connections was dropped 
         #        and updates its list of connections accordingly.
@@ -161,14 +181,9 @@ class Network(object):
         # info = "incoming" if src was in dest's incoming connections, 
         #           else "outgoing"
         elif eventEntry.eventType == DROP:
-            ipToRemove = src.ipV4Addr
-
-            if eventEntry.info == "incoming":
-                dest.incomingCnxs.remove(ipToRemove)
-            else:
-                dest.outgoingCnxs.remove(ipToRemove)
-
+            dest.removeFromConnections(src.ipV4Addr)
             self.addCxns(dest)
+
         # JOIN: A node is requesting to join the network. 
         #        Randomly chooses a seeder to contact for connection information.
         #        Additionally schedules a time for the node to restart
@@ -181,9 +196,9 @@ class Network(object):
                                                       eventType = REQUEST_CONNECTION_INFO, 
                                                       info = None)))
             self.eventQueue.put((self.getRestartTime(),event(srcNode = src,
-                                                            destNode = None,
-                                                            eventType = RESTART,
-                                                            info = None)))
+                                                             destNode = None,
+                                                             eventType = RESTART,
+                                                             info = None)))
 
         # CONNECT: A node is requesting to connect to another node.
         # 
@@ -192,13 +207,14 @@ class Network(object):
         elif eventEntry.eventType == CONNECT:
             destHasRoom = len(dest.incomingCnxs) < MAX_INCOMING
             srcHasRoom = len(src.outgoingCnxs) < MAX_OUTGOING
-            if destHasRoom & srcHasRoom:
+            if dest.nodeType != DARK and destHasRoom and srcHasRoom:
                 src.addToTried(dest.ipV4Addr, self.globalTime)
 
                 dest.learnIP(src.ipV4Addr, src.ipV4Addr)
                 dest.addToTried(src.ipV4Addr, self.globalTime)
-                src.outgoingCnxs.append(dest.ipV4Addr)
-                dest.incomingCnxs.append(src.ipV4Addr)
+
+                src.addToOutgoingCnxs(dest.ipV4Addr)
+                dest.addToIncomingCnxs(src.ipV4Addr)
             else:
                 self.eventQueue.put((scheduledTime, event(srcNode = dest,
                                                           destNode = src,
@@ -242,15 +258,16 @@ class Network(object):
                                                       info = None)))
 
         # REQUEST_CONNECTION_INFO: A node is requesting information about nodes 
-        #                           to connect to
+        #                           to connect to. Simulates a DNS query to a seeder node.
         # 
         # src = the requesting node
         # dest = seeder node that will answer the request
         elif eventEntry.eventType == REQUEST_CONNECTION_INFO:
+            ipList = dest.getIPsForQuery() # List of IPs returned by the seeder node from the DNS query
             self.eventQueue.put((scheduledTime, event(srcNode = dest, 
                                                       destNode = src, 
                                                       eventType = CONNECTION_INFO, 
-                                                      info = self.hardcodedIPs[:])))
+                                                      info = ipList)))
 
         # CONNECTION_INFO: A node is receiving information about nodes to connect to.
         # 
@@ -269,6 +286,7 @@ class Network(object):
             for ip in connections[MAX_OUTGOING:]:
                 dest.learnIP(ip, src.ipV4Addr)
                 dest.addToNew(ip, self.globalTime)
+
         else:
             raise Exception("Invalid event type")
     
