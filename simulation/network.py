@@ -277,13 +277,16 @@ class Network(object):
         elif eventEntry.eventType == CONNECTION_INFO:
             connections = eventEntry.info[:]
             random.shuffle(connections)
-            for ip in connections[:MAX_OUTGOING]:
+
+            freeCnxsDest = MAX_OUTGOING - len(dest.outgoingCnxs)
+
+            for ip in connections[:freeCnxsDest]:
                 dest.learnIP(ip, src.ipV4Addr)
                 self.eventQueue.put((scheduledTime, event(srcNode = dest, 
                                                           destNode = self.ipToNodes[ip], 
                                                           eventType = CONNECT, 
                                                           info = None)))
-            for ip in connections[MAX_OUTGOING:]:
+            for ip in connections[freeCnxsDest:]:
                 dest.learnIP(ip, src.ipV4Addr)
                 dest.addToNew(ip, self.globalTime)
 
