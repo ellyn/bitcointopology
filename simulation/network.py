@@ -128,13 +128,13 @@ class Network(object):
 
         for seeder in self.seederNodes:
             seeder.updateNetworkInfo(network)
+        self.lastSeederCrawlTime = self.globalTime
 
     def processNextEvent(self):
         self.globalTime, eventEntry = self.eventQueue.get()
 
         if self.lastSeederCrawlTime - self.globalTime >= TIME_BETWEEN_CRAWLS:
             self.simulateSeederCrawl()
-            self.lastSeederCrawlTime = self.globalTime
 
         latency = self.generateLatency()
         scheduledTime = self.globalTime + latency
