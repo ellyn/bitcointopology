@@ -292,14 +292,49 @@ class TestNode(unittest.TestCase):
         self.assertEqual(numPeerIpOccurencesBefore, 1)
         self.assertEqual(numPeerIpOccurencesAfter, 1)
         '''
-    '''
+    
     # 2.2 New table
     def whenAddressFromDnsSeeder_onlyAddedToNewTable(self):
         # mock Node(peer, seeder), EventQueue
         # process CONNECTION_INFO event
         # assert addToTried() not called
         # maybe assert addToNew() called
-    
+
+        ip = self.network.assignIP()
+        self.nodePeer2.ipV4Addr = ip
+        self.network.ipToNodes[ip] = self.nodePeer2
+        self.nodePeer.nonce = 'some nonce'
+        
+        # fill nodePeer's outgoing connection to force ip into new table
+        for i in range(MAX_OUTGOING):
+            outIp = self.network.assignIP()
+            self.nodePeer.outgoingCnxs.append(outIp)
+
+        connectionInfoEvent = event(srcNode=self.seederNode, destNode=self.nodePeer, eventType=CONNECTION_INFO, info=[ip])
+        self.network.eventQueue.put((self.network.globalTime, connectionInfoEvent))
+
+        self.nodePeer.learnIP(ip, self.seederNode.ipV4Addr)
+
+        
+        # run code (CONNECTION_INFO, and CONNECT)
+        self.network.processNextEvent()
+        self.network.processNextEvent()
+
+        # verify ip appears in new table and not tried table
+        foundInNew = False
+        for bucketNum, addressDictionary in enumerate(self.nodePeer.newTable):
+            if ip in addressDictionary.keys():
+                foundInNew = True
+
+        foundInTried = False
+        for bucketNum, addressDictionary in enumerate(self.nodePeer.triedTable):
+            if ip in addressDictionary.keys():
+                foundInTried = True
+
+        self.assertEqual(foundInNew, True)
+        self.assertEqual(foundInTried, False)
+
+    '''
     def whenAddressFromAddrMsg_onlyAddedToNewTable(self):
         # mock Node(peer, sender), eventQueue
         # process AddrMsg
@@ -316,27 +351,40 @@ class TestNode(unittest.TestCase):
     def whenAddressFromAddrMsg_timestampIsPlusTwoHours(self):
         # TODO: implement AddrMsg event in project?
     '''
+
     def test_whenSelectingBucket_useSchemeFromPaper(self):
         ip = self.network.assignIP()
         self.nodePeer2.ipV4Addr = ip
         self.network.ipToNodes[ip] = self.nodePeer2
+        self.nodePeer.nonce = 'some nonce'
         
         # fill nodePeer's outgoing connection to force ip into new table
         for i in range(MAX_OUTGOING):
             outIp = self.network.assignIP()
             self.nodePeer.outgoingCnxs.append(outIp)
 
-
         connectionInfoEvent = event(srcNode=self.seederNode, destNode=self.nodePeer, eventType=CONNECTION_INFO, info=[ip])
         self.network.eventQueue.put((self.network.globalTime, connectionInfoEvent))
 
         self.nodePeer.learnIP(ip, self.seederNode.ipV4Addr)
         sourceIp = self.nodePeer.ipToAddr[ip].sourceIP
-        expectedBucket = self.nodePeer.mapToNewBucket(ip, sourceIp)
+
+        # compute bucket manually
+        ipTemp = ip.split('.')
+        ipGroup = ipTemp[0] + '.' + ipTemp[1]
+
+        sourceTemp = sourceIp.split('.')
+        srcIPGroup = sourceTemp[0] + '.' + sourceTemp[1] 
+
+        nonce = str(self.nodePeer.nonce)
+        i = hash(nonce + ipGroup + srcIPGroup) % 32
+        expectedBucket = hash(nonce + srcIPGroup + str(i)) % 256
         
+        # run code
         self.network.processNextEvent()
         self.network.processNextEvent()
 
+        # verify bucket
         actualBucket = []
         for bucketNum, addressDictionary in enumerate(self.nodePeer.newTable):
             if ip in addressDictionary.keys():
