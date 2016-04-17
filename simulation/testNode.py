@@ -136,12 +136,22 @@ class TestNode(unittest.TestCase):
     
     def whenNewDay_knownListFlushed(self):
         #asdf
-    
+    '''
     # 2.2 Tried table
     def test_whenSelectingBucketForAnIp_useSchemeFromPaper(self):
-        # mock Node, hash
-        # assert node.mapToTriedBucket() == manual calculation
-    '''
+        self.nodePeer.nonce = 'some nonce'
+        peerIP = self.network.assignIP()
+
+        temp = peerIP.split('.')
+        peerGroup = temp[0] + '.' + temp[1]
+        nonce = str(self.nodePeer.nonce)
+        i = hash(nonce + peerIP) % 4
+        expectedBucketNum = hash(nonce + peerGroup + str(i)) % 64
+
+        bucketNum = self.nodePeer.mapToTriedBucket(peerIP)
+
+        self.assertEqual(expectedBucketNum, bucketNum)
+        #
     
     def test_whenConnectSuccessToPeer_peerAddressInsertedIntoTried(self):
         # generate node with space for at least 1 new connection
@@ -170,14 +180,40 @@ class TestNode(unittest.TestCase):
         self.assertEqual(isPeerInTriedTableBefore, False)
         self.assertEqual(isPeerInTriedTableAfter, True)
     
-    '''def test_whenInsertingAndBucketFull_properEvictionPerformed(self):
-        # mock Node, Node.mapToTriedBucket(), Node.bitcoinEviction()
-        # call addToTried()
-        # assert bitcoinEviction() called
-        # assert expected address gone from tried table
-        # assert addToNew() called with evicted address
-        # assert new address exists in tried table
-    '''
+    def test_whenInsertingNewAddressAndBucketFull_properEvictionPerformed(self):
+        SEED = 567
+        SOURCE_IP = self.network.assignIP()
+
+        peerIP = self.network.assignIP()
+        peerTimestamp = random.random() + 10
+        self.nodePeer.learnIP(peerIP, SOURCE_IP)
+        bucketNum = self.nodePeer.mapToTriedBucket(peerIP)
+
+        while len(self.nodePeer.triedTable[bucketNum]) < ADDRESSES_PER_BUCKET:
+            ip = self.network.assignIP()
+            timestamp = random.random()
+            self.nodePeer.learnIP(ip, SOURCE_IP)
+            self.nodePeer.triedTable[bucketNum][ip] = timestamp
+
+        random.seed(SEED)
+        # determine which IP is expected to be evicted
+        fourIPs = random.sample(self.nodePeer.triedTable[bucketNum], 4)
+        fourTimestamps = [self.nodePeer.triedTable[bucketNum][ip] for ip in fourIPs]
+        
+        oldestTimestamp = 999
+        for i, timestamp in enumerate(fourTimestamps):
+            if timestamp < oldestTimestamp:
+                oldestTimestamp = timestamp
+                oldestIp = fourIPs[i]
+
+        random.seed(SEED)
+        self.nodePeer.addToTried(peerIP, peerTimestamp)
+
+        self.assertEqual(len(self.nodePeer.triedTable[bucketNum]), ADDRESSES_PER_BUCKET)
+        self.assertEqual(peerIP in self.nodePeer.triedTable[bucketNum].keys(), True)
+        self.assertEqual(oldestIp in self.nodePeer.triedTable[bucketNum].keys(), False)
+
+    
     def test_whenInsertingIntoTriedAndPeerAddressAlreadyPresent_onlyTimestampUpdated(self):
         # generate node already connected to peer
         peerIP = self.nodePeer2.ipV4Addr
@@ -206,12 +242,12 @@ class TestNode(unittest.TestCase):
         self.assertEqual(numPeerIpOccurencesBefore, 1)
         self.assertEqual(numPeerIpOccurencesAfter, 1)
     
-    #@patch('network.Network.generate_latency')
-    def test_whenPeerSentTriggeringMsg_andMoreThanTwentyMinsElapsed_onlyTimestampUpdated(self):#, mock_network_generate_latency):
+    '''
+    # TODO: Implement after we support ADDR
+    def test_whenPeerSentTriggeringMsg_andMoreThanTwentyMinsElapsed_onlyTimestampUpdated(self):
         # do we support VERSION, ADDR, INVENTORY, GETDATA, PING messages?
         # is ADDR -> CONNECTION_INFO event?
-        self.assertEqual(True, True)
-        '''
+        
         # generate node with specific IP already in its tried table
         peerIP = self.nodePeer2.ipV4Addr
         bucket = self.nodePeer.mapToTriedBucket(peerIP)
