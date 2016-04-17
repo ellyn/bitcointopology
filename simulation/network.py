@@ -276,19 +276,12 @@ class Network(object):
         # info = list of IP addresses to connect to
         elif eventEntry.eventType == CONNECTION_INFO:
             connections = eventEntry.info[:]
-            random.shuffle(connections)
-
-            freeCnxsDest = MAX_OUTGOING - len(dest.outgoingCnxs)
-
-            for ip in connections[:freeCnxsDest]:
-                dest.learnIP(ip, src.ipV4Addr)
-                self.eventQueue.put((scheduledTime, event(srcNode = dest, 
-                                                          destNode = self.ipToNodes[ip], 
-                                                          eventType = CONNECT, 
-                                                          info = None)))
-            for ip in connections[freeCnxsDest:]:
+            for ip in connections:
                 dest.learnIP(ip, src.ipV4Addr)
                 dest.addToNew(ip, self.globalTime)
+
+            for i in range(MAX_OUTGOING - len(dest.outgoingCnxs)):
+                self.addCxns(dest)
 
         else:
             raise Exception("Invalid event type")
