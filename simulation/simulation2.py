@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-import argparse, time, pickle
+import argparse, time, pickle, json
 
 from constants import *
 from network import Network
@@ -44,6 +44,10 @@ parser.add_argument(
   default='state.pickle',
   type=str)
 
+metrics = {
+  'diameter': lambda n: n.getLCDDiameter()
+}
+
 def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, outFile):
 
   realStart = time.time()
@@ -54,11 +58,16 @@ def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, ou
   # Initialize network.
   network = Network(numInitNodes = NUM_INIT_NODES, totalNodes = numNodes, latencyInfo = latencyType, darkNodeProb = darkNodeProb)
 
+  metric_log = []
+
   # Run simulation until time over.
   while not network.shouldTerminate(termCond, termVal):
     network.processNextEvent()
-    print(network.getLCCDiameter())
+    # Could be done every X events
+    metric_log.append((network.globalTime, {key: metrics[key](network) for key in metrics})
 
+  open('metrics.json', 'w').write(json.dumps(metric_log))
+  
   realEnd = time.time()
 
   print('Simulation done in {} seconds. Writing out network state & initialization parameters to {}.'.format(realEnd - realStart, outFile))

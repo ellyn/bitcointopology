@@ -322,12 +322,30 @@ class Network(object):
         graph = self.getGraph()
         if mode is GRAPH_SAMPLE_ALL: 
           pass
+        # Random subset of nodes & their associated edges
         elif mode is GRAPH_SAMPLE_RND:
-          pass
+          newGraph = nx.Graph()
+          included = set([])
+          for node in grph:
+            if random.random() < GRAPH_SAMPLE_RND_RATIO:
+              newGraph.add_node(node)
+              included.add(node)
+          for node in graph:
+            for neighbor in graph.neighbors(node):
+              if node in included and neighbor in included:
+                newGraph.add_edge(node, neighbor)
+          graph = newGraph
+        # Just draw the largest connected component
         elif mode is GRAPH_SAMPLE_LCC:
           connected = list(nx.connected_components(graph))
           lcc = list(max(connected, key = len))
-          
+          newGraph = nx.Graph()
+          for node in lcc:
+              newGraph.add_node(node)
+          for node in lcc:
+              for neighbor in graph.neighbors(node):
+                  newGraph.add_edge(node, neighbor)
+          graph = newGraph 
         nx.draw(graph)
         plt.savefig(filename)
 
