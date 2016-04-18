@@ -129,13 +129,13 @@ class Network(object):
 
         for seeder in self.seederNodes:
             seeder.updateNetworkInfo(network)
+        self.lastSeederCrawlTime = self.globalTime
 
     def processNextEvent(self):
         self.globalTime, eventEntry = self.eventQueue.get()
 
         if self.lastSeederCrawlTime - self.globalTime >= TIME_BETWEEN_CRAWLS:
             self.simulateSeederCrawl()
-            self.lastSeederCrawlTime = self.globalTime
 
         latency = self.generateLatency()
         scheduledTime = self.globalTime + latency
@@ -277,16 +277,12 @@ class Network(object):
         # info = list of IP addresses to connect to
         elif eventEntry.eventType == CONNECTION_INFO:
             connections = eventEntry.info[:]
-            random.shuffle(connections)
-            for ip in connections[:MAX_OUTGOING]:
-                dest.learnIP(ip, src.ipV4Addr)
-                self.eventQueue.put((scheduledTime, event(srcNode = dest, 
-                                                          destNode = self.ipToNodes[ip], 
-                                                          eventType = CONNECT, 
-                                                          info = None)))
-            for ip in connections[MAX_OUTGOING:]:
+            for ip in connections:
                 dest.learnIP(ip, src.ipV4Addr)
                 dest.addToNew(ip, self.globalTime)
+
+            for i in range(MAX_OUTGOING - len(dest.outgoingCnxs)):
+                self.addCxns(dest)
 
         else:
             raise Exception("Invalid event type")

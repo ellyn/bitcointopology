@@ -106,10 +106,9 @@ class Node(object):
     # Returns terrible address from given bucket dictionary 
     # An address is terrible when it is more than 30 days old 
     # or has too many failed connection attempts
-    def isTerrible(self, bucket):
+    def isTerrible(self, bucket, globalTime):
         for ip in bucket:
-            # Address is more than 30 days old
-            if globalTime - bucket[ip] == 2592000:
+            if globalTime - bucket[ip] >= THIRTY_DAYS:
                 return ip
 
             # Too many failed connection attempts
@@ -126,8 +125,8 @@ class Node(object):
             assert ipAddr in self.ipToAddr
             peerIP = self.ipToAddr[ipAddr].sourceIP
         bucket = self.mapToNewBucket(ipAddr, peerIP)
-        if len(self.newTable[bucket]) == 64:
-            terribleIP = self.isTerrible(self.newTable[bucket])
+        if len(self.newTable[bucket]) == ADDRESSES_PER_BUCKET:
+            terribleIP = self.isTerrible(self.newTable[bucket], globalTime)
             del self.newTable[bucket][terribleIP]
         self.newTable[bucket][ipAddr] = globalTime
 
