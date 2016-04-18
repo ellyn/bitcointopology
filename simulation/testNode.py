@@ -393,21 +393,107 @@ class TestNode(unittest.TestCase):
         self.assertEqual(len(actualBucket), 1)
         self.assertEqual(actualBucket[0], expectedBucket)
 
-    '''
-    def whenHashingGroupSourceGroupPair_hashesToUniqueBucket(self):
-        # call mapToNewBucket() many times
-        # assert result constant
     
-    def whenInsertingAndBucketFull_properEvictionPerformed(self):
-        # mock Node(peer), Node.mapToNewBucket() such that result is full
-        # call addToNew()
-        # case 1: Node.isTerrible() called
-        #         case A: assert address over 30 days old deleted
-        #         case B: assert address with too many failed attempts deleted
-        # case 2: Node.bitcoinEviction() used
-        #         assert evicted address deleted
-    
-    # 2.3 Selecting peers
+    def test_whenHashingGroupSourceGroupPair_hashesToUniqueBucket(self):
+        differentIPs = 10
+        numTrials = 10
+
+        for i in range(differentIPs):
+            ip = self.network.assignIP()
+            peerIP = self.network.assignIP()
+
+            bucketSet = set()
+            for j in range(numTrials):
+                computedBucket = self.nodePeer.mapToNewBucket(ip, peerIP)
+                bucketSet.add(computedBucket)
+            self.assertEqual(len(bucketSet), 1)
+
+    def test_whenInsertingAndBucketFull_andTerribleNodeExistsAgewise_properEvictionPerformed(self):
+        SOURCE_IP = self.network.assignIP()
+
+        peerIP = self.network.assignIP()
+        peerTimestamp = random.random() + THIRTY_DAYS + 1
+        self.nodePeer.learnIP(peerIP, SOURCE_IP)
+        bucketNum = self.nodePeer.mapToNewBucket(peerIP, SOURCE_IP)
+
+        while len(self.nodePeer.newTable[bucketNum]) < (ADDRESSES_PER_BUCKET - 1):
+            ip = self.network.assignIP()
+            timestamp = random.random() + THIRTY_DAYS
+            self.nodePeer.learnIP(ip, SOURCE_IP)
+            self.nodePeer.newTable[bucketNum][ip] = timestamp
+
+        # add terrible node (over 30 days old)
+        while len(self.nodePeer.newTable[bucketNum]) < ADDRESSES_PER_BUCKET:
+            terribleIp = self.network.assignIP()
+            timestamp = random.random()
+            self.nodePeer.learnIP(terribleIp, SOURCE_IP)
+            self.nodePeer.newTable[bucketNum][terribleIp] = timestamp
+
+        self.nodePeer.addToNew(peerIP, peerTimestamp)
+
+        self.assertEqual(len(self.nodePeer.newTable[bucketNum]), ADDRESSES_PER_BUCKET)
+        self.assertEqual(peerIP in self.nodePeer.newTable[bucketNum].keys(), True)
+        self.assertEqual(terribleIp in self.nodePeer.newTable[bucketNum].keys(), False)
+
+    def test_whenInsertingAndBucketFull_andTerribleNodeExistsByFailedAttempts_properEvictionPerformed(self):
+        SOURCE_IP = self.network.assignIP()
+
+        peerIP = self.network.assignIP()
+        peerTimestamp = random.random()
+        self.nodePeer.learnIP(peerIP, SOURCE_IP)
+        bucketNum = self.nodePeer.mapToNewBucket(peerIP, SOURCE_IP)
+
+        while len(self.nodePeer.newTable[bucketNum]) < ADDRESSES_PER_BUCKET:
+            ip = self.network.assignIP()
+            timestamp = random.random()
+            self.nodePeer.learnIP(ip, SOURCE_IP)
+            self.nodePeer.newTable[bucketNum][ip] = timestamp
+
+        # modify last node as the terrible node
+        terribleIp = ip
+        for i in range(MAX_RETRIES + 1):
+            self.nodePeer.incrementFailedAttempts(terribleIp)
+
+        self.nodePeer.addToNew(peerIP, peerTimestamp)
+
+        self.assertEqual(len(self.nodePeer.newTable[bucketNum]), ADDRESSES_PER_BUCKET)
+        self.assertEqual(peerIP in self.nodePeer.newTable[bucketNum].keys(), True)
+        self.assertEqual(terribleIp in self.nodePeer.newTable[bucketNum].keys(), False)
+
+    def test_whenInsertingAndBucketFull_andThoseNodesAreNotTerrible_properEvictionPerformed(self):
+        SEED = 567
+        SOURCE_IP = self.network.assignIP()
+
+        peerIP = self.network.assignIP()
+        peerTimestamp = random.random() + 10
+        self.nodePeer.learnIP(peerIP, SOURCE_IP)
+        bucketNum = self.nodePeer.mapToNewBucket(peerIP, SOURCE_IP)
+
+        while len(self.nodePeer.newTable[bucketNum]) < ADDRESSES_PER_BUCKET:
+            ip = self.network.assignIP()
+            timestamp = random.random()
+            self.nodePeer.learnIP(ip, SOURCE_IP)
+            self.nodePeer.newTable[bucketNum][ip] = timestamp
+
+        random.seed(SEED)
+        # determine which IP is expected to be evicted
+        fourIPs = random.sample(self.nodePeer.newTable[bucketNum], 4)
+        fourTimestamps = [self.nodePeer.newTable[bucketNum][ip] for ip in fourIPs]
+        
+        oldestTimestamp = 999
+        for i, timestamp in enumerate(fourTimestamps):
+            if timestamp < oldestTimestamp:
+                oldestTimestamp = timestamp
+                oldestIp = fourIPs[i]
+
+        random.seed(SEED)
+        self.nodePeer.addToNew(peerIP, peerTimestamp)
+
+        self.assertEqual(len(self.nodePeer.newTable[bucketNum]), ADDRESSES_PER_BUCKET)
+        self.assertEqual(peerIP in self.nodePeer.newTable[bucketNum].keys(), True)
+        self.assertEqual(oldestIp in self.nodePeer.newTable[bucketNum].keys(), False)
+
+    '''# 2.3 Selecting peers
     def whenOutgoingConnectionDrops_newOutgoingConnectionSelected(self):
         #asdf
     
