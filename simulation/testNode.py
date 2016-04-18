@@ -14,7 +14,7 @@ class TestNode(unittest.TestCase):
     # run before every test case
     def setUp(self):
         self.network = Network()
-        
+
         self.network.hardcodedIPs = [self.network.assignIP() for i in range(NUM_INIT_NODES)]
         self.seederNode = Node(self.network.assignIP(), SEEDER)
 
@@ -177,8 +177,8 @@ class TestNode(unittest.TestCase):
         isPeerInTriedTableAfter = (peerIP in self.nodePeer.triedTable[bucket])
         
         # assert data correct
-        self.assertEqual(isPeerInTriedTableBefore, False)
-        self.assertEqual(isPeerInTriedTableAfter, True)
+        self.assertFalse(isPeerInTriedTableBefore)
+        self.assertTrue(isPeerInTriedTableAfter)
     
     def test_whenInsertingNewAddressAndBucketFull_properEvictionPerformed(self):
         SEED = 567
@@ -210,8 +210,8 @@ class TestNode(unittest.TestCase):
         self.nodePeer.addToTried(peerIP, peerTimestamp)
 
         self.assertEqual(len(self.nodePeer.triedTable[bucketNum]), ADDRESSES_PER_BUCKET)
-        self.assertEqual(peerIP in self.nodePeer.triedTable[bucketNum].keys(), True)
-        self.assertEqual(oldestIp in self.nodePeer.triedTable[bucketNum].keys(), False)
+        self.assertTrue(peerIP in self.nodePeer.triedTable[bucketNum].keys())
+        self.assertFalse(oldestIp in self.nodePeer.triedTable[bucketNum].keys())
 
     
     def test_whenInsertingIntoTriedAndPeerAddressAlreadyPresent_onlyTimestampUpdated(self):
@@ -237,7 +237,7 @@ class TestNode(unittest.TestCase):
         numPeerIpOccurencesAfter = sum([b.keys() for b in self.nodePeer.triedTable], []).count(peerIP)
         
         # assertions
-        self.assertEqual(peerTimestampBefore < peerTimestampAfter, True)
+        self.assertTrue(peerTimestampBefore < peerTimestampAfter)
         self.assertEqual(triedTableTotalEntriesBefore, triedTableTotalEntriesAfter)
         self.assertEqual(numPeerIpOccurencesBefore, 1)
         self.assertEqual(numPeerIpOccurencesAfter, 1)
@@ -331,8 +331,8 @@ class TestNode(unittest.TestCase):
             if ip in addressDictionary.keys():
                 foundInTried = True
 
-        self.assertEqual(foundInNew, True)
-        self.assertEqual(foundInTried, False)
+        self.assertTrue(foundInNew)
+        self.assertFalse(foundInTried)
 
     '''
     def whenAddressFromAddrMsg_onlyAddedToNewTable(self):
@@ -432,8 +432,8 @@ class TestNode(unittest.TestCase):
         self.nodePeer.addToNew(peerIP, peerTimestamp)
 
         self.assertEqual(len(self.nodePeer.newTable[bucketNum]), ADDRESSES_PER_BUCKET)
-        self.assertEqual(peerIP in self.nodePeer.newTable[bucketNum].keys(), True)
-        self.assertEqual(terribleIp in self.nodePeer.newTable[bucketNum].keys(), False)
+        self.assertTrue(peerIP in self.nodePeer.newTable[bucketNum].keys())
+        self.assertFalse(terribleIp in self.nodePeer.newTable[bucketNum].keys())
 
     def test_whenInsertingAndBucketFull_andTerribleNodeExistsByFailedAttempts_properEvictionPerformed(self):
         SOURCE_IP = self.network.assignIP()
@@ -457,8 +457,8 @@ class TestNode(unittest.TestCase):
         self.nodePeer.addToNew(peerIP, peerTimestamp)
 
         self.assertEqual(len(self.nodePeer.newTable[bucketNum]), ADDRESSES_PER_BUCKET)
-        self.assertEqual(peerIP in self.nodePeer.newTable[bucketNum].keys(), True)
-        self.assertEqual(terribleIp in self.nodePeer.newTable[bucketNum].keys(), False)
+        self.assertTrue(peerIP in self.nodePeer.newTable[bucketNum].keys())
+        self.assertFalse(terribleIp in self.nodePeer.newTable[bucketNum].keys())
 
     def test_whenInsertingAndBucketFull_andThoseNodesAreNotTerrible_properEvictionPerformed(self):
         SEED = 567
@@ -490,8 +490,8 @@ class TestNode(unittest.TestCase):
         self.nodePeer.addToNew(peerIP, peerTimestamp)
 
         self.assertEqual(len(self.nodePeer.newTable[bucketNum]), ADDRESSES_PER_BUCKET)
-        self.assertEqual(peerIP in self.nodePeer.newTable[bucketNum].keys(), True)
-        self.assertEqual(oldestIp in self.nodePeer.newTable[bucketNum].keys(), False)
+        self.assertTrue(peerIP in self.nodePeer.newTable[bucketNum].keys())
+        self.assertFalse(oldestIp in self.nodePeer.newTable[bucketNum].keys())
 
     '''# 2.3 Selecting peers
     def whenOutgoingConnectionDrops_newOutgoingConnectionSelected(self):
