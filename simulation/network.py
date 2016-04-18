@@ -1,5 +1,6 @@
 import collections, itertools, Queue
 import networkx as nx
+import matplotlib.pyplot as plt
 import math
 from constants import *
 from node import Node
@@ -320,6 +321,20 @@ class Network(object):
         # print('Graph created in {} seconds.'.format(end - start))
         return graph 
 
+    # Draw graph of network nodes out to file
+    def drawGraph(self, mode = GRAPH_SAMPLE_ALL, filename = 'graph.jpg'):
+        graph = self.getGraph()
+        if mode is GRAPH_SAMPLE_ALL: 
+          pass
+        elif mode is GRAPH_SAMPLE_RND:
+          pass
+        elif mode is GRAPH_SAMPLE_LCC:
+          connected = list(nx.connected_components(graph))
+          lcc = list(max(connected, key = len))
+          
+        nx.draw(graph)
+        plt.savefig(filename)
+
     # Termination Condition: Global Time
     # Terminate once the network has persisted for a certain length of time.
     def getGlobalTime(self):
@@ -329,7 +344,6 @@ class Network(object):
     # Terminate once the network has reached a certain size.
     def getNumNodes(self):
         return len(self.nodes)
-
 
     # Termination Condition: Diameter
     # Terminate once the network has reached a given diameter.
