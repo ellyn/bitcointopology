@@ -23,6 +23,12 @@ class Node(object):
         # Only contains entries for IP addresses that the Node has learned
         self.ipToAddr = {}
 
+        # Nodes we already sent/received ADDR messages today
+        self.knownAddrIPs = []
+
+        # Nodes can become blacklisted by sending a faulty ADDR message
+        self.blacklistedIPs = []
+
         # For seeder nodes only: List of known IPs after crawling Bitcoin network
         if nodeType == SEEDER:
             self.knownIPs = []
@@ -149,3 +155,55 @@ class Node(object):
     def getIPsForQuery(self):
         print len(self.knownIPs)
         return random.sample(self.knownIPs, DNS_QUERY_SIZE)
+
+    # Randomly select N IPs to send in an ADDR message, where N is randomly generated
+    # Return list of chunked IPs, each sublist no greater than 1000
+    def selectAddrs(self):
+        totalTriedEntries = sum([len(b) for b in self.triedTable])
+        totalNewEntries = sum([len(b) for b in self.newTable])
+        totalAddresses = totalTriedEntries + totalNewEntries
+
+        lowerBound = int(ADDR_LOWER_BOUND_PERCENT * totalAddresses) + 1
+        upperBound = ADDR_UPPER_BOUND_NUM
+        randomNum = random.randint(lowerBound, upperBound)
+
+        flattenedIPs = []
+        for bucket in self.triedTable:
+            flattenedIPs.append(bucket.keys())
+        for bucket in self.newTable:
+            flattenedIPs.append(bucket.keys())
+
+        numToSample = min(randomNum, len(flattenedIPs))
+        ipList = random.sample(flattenedIPs, numToSample)
+
+        return [ipList[i:i+MAX_ADDRS_PER_MSG] for i in range(0, len(ipList), MAX_ADDRS_PER_MSG)]
+
+    def blacklistIP(self, ip):
+        self.blacklistedIPs.append(ip)
+
+    def addToKnownAddr(self, ip):
+        self.knownAddrIPs.append(ip)
+
+    # Randomly select [up to] 2 connected peers to send an ADDR message, as long as we haven't already done so today
+    def selectPeersForAddrMsg(self, globalTime):
+        # gather all connected peers into one dictionary{ip, hash}
+        connectedPeersDict = {}
+        for ip in self.incomingCnxs:
+            if ip not in self.knownAddrIPs:
+                connectedPeersDict[ip] = hash(str(self.nonce) + ip)
+        for ip in self.outgoingCnxs:
+            if ip not in self.knownAddrIPs:
+                connectedPeersDict[ip] = hash(str(self.nonce) + ip)
+        
+        # take first two by hash lexographically
+        firstTwoByHash = sorted(connectedPeersDict.items(), key=lambda x:x[1])[:2]
+        twoIPs = [ip for (ip, h) in firstTwoByHash]
+
+        self.knownAddrIPs.append(twoIPs)
+
+        return twoIPs
+
+    # On a new day, flush ADDR recipient list, and change nonce
+    def notifyNewDay(self, day):
+        self.nonce = day
+        self.knownAddrIPs = []

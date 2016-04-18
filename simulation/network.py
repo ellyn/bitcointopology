@@ -52,6 +52,12 @@ class Network(object):
                                                               eventType = RESTART, 
                                                               info = None)))
 
+            # place event to trigger sending ADDR messages
+            self.eventQueue.put((0, event(srcNode = None,    
+                                          destNode = newNode, 
+                                          eventType = NEW_DAY, 
+                                          info = None)))
+
         # Create seeder nodes
         for i in range(NUM_SEEDERS):
             seederNode = Node(self.assignIP(), nodeType = SEEDER)
@@ -86,6 +92,14 @@ class Network(object):
                                                  destNode = None, 
                                                  eventType = JOIN, 
                                                  info = None)))
+            
+            # place events to trigger sending ADDR messages
+            firstDayAfterWake = (wakeTime / ONE_DAY) + 1
+            firstDayInSec = firstDayAfterWake * ONE_DAY
+            self.eventQueue.put((firstDayInSec, event(srcNode = None,    
+                                                      destNode = newNode, 
+                                                      eventType = NEW_DAY, 
+                                                      info = None)))
 
     def generateLatency(self):
         return random.random() / 2 # Change later
@@ -215,6 +229,14 @@ class Network(object):
 
                 src.addToOutgoingCnxs(dest.ipV4Addr)
                 dest.addToIncomingCnxs(src.ipV4Addr)
+
+                # propagate reply ADDR message
+                ipList = dest.selectAddrs()
+                for ipSubList in ipList:
+                    self.eventQueue.put((scheduledTime, event(srcNode = dest,
+                                                              destNode = src,
+                                                              eventType = CONNECTION_INFO,
+                                                              info = (ADDR_MSG, ipSubList))))
             else:
                 self.eventQueue.put((scheduledTime, event(srcNode = dest,
                                                           destNode = src,
@@ -267,21 +289,59 @@ class Network(object):
             self.eventQueue.put((scheduledTime, event(srcNode = dest, 
                                                       destNode = src, 
                                                       eventType = CONNECTION_INFO, 
-                                                      info = ipList)))
+                                                      info = (DNS_MSG, ipList))))
 
         # CONNECTION_INFO: A node is receiving information about nodes to connect to.
         # 
-        # src = seeder node that sent the connection info
+        # src = node that sent the connection info
         # dest = node that is receiving the connection info
         # info = list of IP addresses to connect to
         elif eventEntry.eventType == CONNECTION_INFO:
-            connections = eventEntry.info[:]
+            msgType, connections = eventEntry.info
+
+            if msgType == ADDR_MSG:
+                dest.addToKnownAddr(src.ipV4Addr)
+
+                if len(connections) >= MAX_ADDRS_PER_MSG:
+                    dest.blacklistIP(src.ipV4Addr)
+                elif len(connections) <= MAX_ADDRS_TO_FORWARD:
+                    # forward same message to 2 peers
+                    forwardedEvent = eventEntry
+                    forwardedEvent._replace(srcNode = dest)
+
+                    peerIpList = dest.selectPeersForAddrMsg(self.globalTime)
+                    for ip in peerIpList:
+                        peerNode = self.ipToNodes[ip]
+
+                        forwardedEvent._replace(destNode = peerNode)
+                        self.eventQueue.put((scheduledTime, forwardedEvent))
+
             for ip in connections:
                 dest.learnIP(ip, src.ipV4Addr)
                 dest.addToNew(ip, self.globalTime)
 
             for i in range(MAX_OUTGOING - len(dest.outgoingCnxs)):
                 self.addCxns(dest)
+
+        # NEW_DAY: A node sends out ADDR messages to 2 peers with only its own ip
+        #          and flushes its already sent to list.
+        #          Also create event for tomorrow
+        # 
+        # src = None
+        # dest = subject node
+        elif eventEntry.eventType == NEW_DAY:
+            dest.notifyNewDay()
+
+            ipList = [dest.ipV4Addr]
+
+            # no latency because node knows instantly when it's a new day
+            self.eventQueue.put((self.globalTime, event(srcNode = dest, 
+                                                      destNode = src, 
+                                                      eventType = CONNECTION_INFO, 
+                                                      info = (ADDR, ipList))))
+
+            # place event for tomorrow
+            self.eventQueue.put((self.globalTime + ONE_DAY, eventEntry))
 
         else:
             raise Exception("Invalid event type")
