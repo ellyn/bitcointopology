@@ -3,6 +3,7 @@ from mock import MagicMock
 
 from node import Node
 from network import Network
+import Queue
 from network import event
 from constants import *
 
@@ -11,19 +12,49 @@ from constants import *
 # may need to run `sudo pip install -U mock` for mock library because python 2.7
 
 class TestNode(unittest.TestCase):
-    # run before every test case
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.network = Network()
 
-        self.network.hardcodedIPs = [self.network.assignIP() for i in range(NUM_INIT_NODES)]
-        self.seederNode = Node(self.network.assignIP(), SEEDER)
+        # empty eventQueue
+        self.network.eventQueue = Queue.PriorityQueue()
 
-        self.nodePeer = Node(self.network.assignIP())
-        self.nodePeer2 = Node(self.network.assignIP())
+        # find free non-dark nodes
+        foundFirst = False
+        for i in range(len(self.network.nodes)):
+            thisNode = self.network.nodes[i]
+            if(thisNode.nodeType == PEER):
+                if not foundFirst:
+                    self.nodePeer = thisNode
+                    self.nodePeerIndex = i
+                    foundFirst = True
+                else:
+                    self.nodePeer2 = thisNode
+                    self.nodePeer2Index = i
+                    break;
+
+        self.seederNode = self.network.seederNodes[0]
+
         self.sourceIP = self.network.assignIP()
 
-        self.network.ipToNodes[self.nodePeer.ipV4Addr] = self.nodePeer
-        self.network.ipToNodes[self.seederNode.ipV4Addr] = self.seederNode
+    def setUp(self):
+        # empty eventQueue
+        self.network.eventQueue = Queue.PriorityQueue()
+
+        # reset some nodes
+        oldIP = self.nodePeer.ipV4Addr
+        del self.network.ipToNodes[oldIP]
+        self.nodePeer = Node(oldIP)
+        self.network.ipToNodes[oldIP] = self.nodePeer
+        self.network.ipToNonDarkNodes[oldIP] = self.nodePeer
+        self.network.nodes[self.nodePeerIndex] = self.nodePeer
+
+        oldIP = self.nodePeer2.ipV4Addr
+        del self.network.ipToNodes[oldIP]
+        self.nodePeer2 = Node(oldIP)
+        self.network.ipToNodes[oldIP] = self.nodePeer2
+        self.network.ipToNonDarkNodes[oldIP] = self.nodePeer2
+        self.network.initNodes[self.nodePeer2Index] = self.nodePeer2
 
     # test method names must start with "test..."
 
@@ -61,7 +92,6 @@ class TestNode(unittest.TestCase):
     
     def test_whenNodeMakesOutgoingConnectionRequest_doesNotExceedMaxOutgoingConnections(self):
         # generate node with max outgoing connections
-        self.sourceIP = self.network.assignIP()
         for ip in [self.network.assignIP() for i in range(MAX_OUTGOING)]:
             self.nodePeer.outgoingCnxs.append(ip)
             self.nodePeer.learnIP(ip, self.sourceIP)
@@ -137,6 +167,7 @@ class TestNode(unittest.TestCase):
     def whenNewDay_knownListFlushed(self):
         #asdf
     '''
+    
     # 2.2 Tried table
     def test_whenSelectingBucketForAnIp_useSchemeFromPaper(self):
         self.nodePeer.nonce = 'some nonce'
@@ -151,7 +182,6 @@ class TestNode(unittest.TestCase):
         bucketNum = self.nodePeer.mapToTriedBucket(peerIP)
 
         self.assertEqual(expectedBucketNum, bucketNum)
-        #
     
     def test_whenConnectSuccessToPeer_peerAddressInsertedIntoTried(self):
         # generate node with space for at least 1 new connection
@@ -212,7 +242,6 @@ class TestNode(unittest.TestCase):
         self.assertEqual(len(self.nodePeer.triedTable[bucketNum]), ADDRESSES_PER_BUCKET)
         self.assertTrue(peerIP in self.nodePeer.triedTable[bucketNum].keys())
         self.assertFalse(oldestIp in self.nodePeer.triedTable[bucketNum].keys())
-
     
     def test_whenInsertingIntoTriedAndPeerAddressAlreadyPresent_onlyTimestampUpdated(self):
         # generate node already connected to peer
@@ -294,12 +323,7 @@ class TestNode(unittest.TestCase):
         '''
     
     # 2.2 New table
-    def whenAddressFromDnsSeeder_onlyAddedToNewTable(self):
-        # mock Node(peer, seeder), EventQueue
-        # process CONNECTION_INFO event
-        # assert addToTried() not called
-        # maybe assert addToNew() called
-
+    def test_whenAddressFromDnsSeeder_onlyAddedToNewTable(self):
         ip = self.network.assignIP()
         self.nodePeer2.ipV4Addr = ip
         self.network.ipToNodes[ip] = self.nodePeer2
@@ -315,9 +339,7 @@ class TestNode(unittest.TestCase):
 
         self.nodePeer.learnIP(ip, self.seederNode.ipV4Addr)
 
-        
         # run code (CONNECTION_INFO, and CONNECT)
-        self.network.processNextEvent()
         self.network.processNextEvent()
 
         # verify ip appears in new table and not tried table
@@ -351,7 +373,7 @@ class TestNode(unittest.TestCase):
     def whenAddressFromAddrMsg_timestampIsPlusTwoHours(self):
         # TODO: implement AddrMsg event in project?
     '''
-
+    
     def test_whenSelectingBucket_useSchemeFromPaper(self):
         ip = self.network.assignIP()
         self.nodePeer2.ipV4Addr = ip
@@ -381,7 +403,6 @@ class TestNode(unittest.TestCase):
         expectedBucket = hash(nonce + srcIPGroup + str(i)) % 256
         
         # run code
-        self.network.processNextEvent()
         self.network.processNextEvent()
 
         # verify bucket
@@ -493,7 +514,8 @@ class TestNode(unittest.TestCase):
         self.assertTrue(peerIP in self.nodePeer.newTable[bucketNum].keys())
         self.assertFalse(oldestIp in self.nodePeer.newTable[bucketNum].keys())
 
-    '''# 2.3 Selecting peers
+    '''
+    # 2.3 Selecting peers
     def whenOutgoingConnectionDrops_newOutgoingConnectionSelected(self):
         #asdf
     
