@@ -400,7 +400,7 @@ class Network(object):
           for node in graph:
             for neighbor in graph.neighbors(node):
               if node in included and neighbor in included:
-                newGraph.add_edge(node, neighbor)
+                newGraph.add_edge(node, neighbor, key = 0)
           graph = newGraph
         # Just draw the largest connected component
         elif mode is GRAPH_SAMPLE_LCC:
@@ -411,7 +411,7 @@ class Network(object):
               newGraph.add_node(node)
           for node in lcc:
               for neighbor in graph.neighbors(node):
-                  newGraph.add_edge(node, neighbor)
+                  newGraph.add_edge(node, neighbor, key = 0)
           graph = newGraph 
         nx.draw(graph)
         plt.savefig(filename)
@@ -450,7 +450,7 @@ class Network(object):
             newGraph.add_node(node)
         for node in lcc:
             for neighbor in graph.neighbors(node):
-                newGraph.add_edge(node, neighbor)
+                newGraph.add_edge(node, neighbor, key = 0)
         return nx.diameter(newGraph)
 
     def shouldTerminate(self, condition, value):

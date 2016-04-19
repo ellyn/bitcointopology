@@ -45,7 +45,7 @@ parser.add_argument(
   type=str)
 
 metrics = {
-  'diameter': lambda n: n.getLCDDiameter()
+  'diameter': lambda n: n.getLCCDiameter()
 }
 
 def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, outFile):
@@ -59,12 +59,15 @@ def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, ou
   network = Network(numInitNodes = NUM_INIT_NODES, totalNodes = numNodes, latencyInfo = latencyType, darkNodeProb = darkNodeProb)
 
   metric_log = []
+  eventIndex = 0
 
   # Run simulation until time over.
   while not network.shouldTerminate(termCond, termVal):
     network.processNextEvent()
-    # Could be done every X events
-    metric_log.append((network.globalTime, {key: metrics[key](network) for key in metrics})
+    # done every X events
+    if eventIndex % METRIC_EVENT_INTERVAL == 0:
+      metric_log.append((network.globalTime, {key: metrics[key](network) for key in metrics}))
+    eventIndex += 1
 
   open('metrics.json', 'w').write(json.dumps(metric_log))
   
