@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 from matplotlib import pyplot as plt
 import json, sys
@@ -10,3 +10,4 @@ x_axis = [x[0] for x in data]
 y_axis = [x[1][metric] for x in data]
 
 plt.plot(x_axis, y_axis)
+plt.show()
