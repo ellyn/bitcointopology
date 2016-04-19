@@ -8,6 +8,7 @@ addressInfo = collections.namedtuple('AddressInfo', ['nAttempts',
 class Node(object):
     def __init__(self, ipV4Addr, nodeType = PEER):
         self.nonce = random.randint(0, 65535)
+        self.addrNonce = 0
         self.ipV4Addr = ipV4Addr
         self.nodeType = nodeType
 
@@ -169,9 +170,9 @@ class Node(object):
 
         flattenedIPs = []
         for bucket in self.triedTable:
-            flattenedIPs.append(bucket.keys())
+            flattenedIPs.extend(bucket.keys())
         for bucket in self.newTable:
-            flattenedIPs.append(bucket.keys())
+            flattenedIPs.extend(bucket.keys())
 
         numToSample = min(randomNum, len(flattenedIPs))
         ipList = random.sample(flattenedIPs, numToSample)
@@ -190,20 +191,20 @@ class Node(object):
         connectedPeersDict = {}
         for ip in self.incomingCnxs:
             if ip not in self.knownAddrIPs:
-                connectedPeersDict[ip] = hash(str(self.nonce) + ip)
+                connectedPeersDict[ip] = hash(str(self.addrNonce) + ip)
         for ip in self.outgoingCnxs:
             if ip not in self.knownAddrIPs:
-                connectedPeersDict[ip] = hash(str(self.nonce) + ip)
+                connectedPeersDict[ip] = hash(str(self.addrNonce) + ip)
         
         # take first two by hash lexographically
         firstTwoByHash = sorted(connectedPeersDict.items(), key=lambda x:x[1])[:2]
         twoIPs = [ip for (ip, h) in firstTwoByHash]
 
-        self.knownAddrIPs.append(twoIPs)
+        self.knownAddrIPs.extend(twoIPs)
 
         return twoIPs
 
     # On a new day, flush ADDR recipient list, and change nonce
     def notifyNewDay(self, day):
-        self.nonce = day
+        self.addrNonce = day
         self.knownAddrIPs = []
