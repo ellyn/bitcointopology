@@ -330,17 +330,24 @@ class Network(object):
         # src = None
         # dest = subject node
         elif eventEntry.eventType == NEW_DAY:
-            dest.notifyNewDay()
+            dest.notifyNewDay(self.globalTime)
 
             ipList = [dest.ipV4Addr]
 
-            # no latency because node knows instantly when it's a new day
-            self.eventQueue.put((self.globalTime, event(srcNode = dest, 
-                                                      destNode = src, 
-                                                      eventType = CONNECTION_INFO, 
-                                                      info = (ADDR, ipList))))
+            # send ADDR_MSG to each peer
+            connections = []
+            connections.extend(dest.incomingCnxs)
+            connections.extend(dest.outgoingCnxs)
+            for ip in connections:
+                thisNode = self.ipToNodes[ip]
+                if thisNode is not None:
+                    # no latency because node knows instantly when it's a new day
+                    self.eventQueue.put((self.globalTime, event(srcNode = dest, 
+                                                              destNode = thisNode, 
+                                                              eventType = CONNECTION_INFO, 
+                                                              info = (ADDR_MSG, ipList))))
 
-            # place event for tomorrow
+            # place NEW_DAY event for tomorrow
             self.eventQueue.put((self.globalTime + ONE_DAY, eventEntry))
 
         else:

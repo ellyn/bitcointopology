@@ -153,7 +153,7 @@ class Node(object):
 
     # For seeder nodes only: Returns list of IP addresses as result of DNS query
     def getIPsForQuery(self):
-        print len(self.knownIPs)
+        #print len(self.knownIPs)
         return random.sample(self.knownIPs, DNS_QUERY_SIZE)
 
     # Randomly select N IPs to send in an ADDR message, where N is randomly generated
