@@ -105,7 +105,7 @@ class Network(object):
     def generateLatency(self):
         return random.random() / 2 # Change later
 
-    def addCxns(self,node):
+    def addCxns(self, node, scheduledTime):
         numTriedEntries = sum([len(bucket) for bucket in node.triedTable])
         numNewEntries = sum([len(bucket) for bucket in node.newTable])
 
@@ -121,13 +121,14 @@ class Network(object):
         ip = None
         while not accepted:
             bucketNum = random.randint(0, len(table) - 1)
-            bucketPos = random.randint(0, len(table[bucketNum]) - 1)
-            ip = table[bucketNum].keys()[bucketPos]
-            timestamp = table[bucketNum][ip]
-            t = ((self.globalTime - timestamp) / 600) * 10
-            probAccept = min(1, (1.2**numRejects) / float(1 + t))
-            accepted = random.random() < probAccept
-            numRejects += 1
+            if len(table[bucketNum]) > 0:
+                bucketPos = random.randint(0, len(table[bucketNum]) - 1)
+                ip = table[bucketNum].keys()[bucketPos]
+                timestamp = table[bucketNum][ip]
+                t = ((self.globalTime - timestamp) / 600) * 10
+                probAccept = min(1, (1.2**numRejects) / float(1 + t))
+                accepted = random.random() < probAccept
+                numRejects += 1
 
         self.eventQueue.put((scheduledTime, event(srcNode = node, 
                                                   destNode = self.ipToNodes[ip],
@@ -182,7 +183,7 @@ class Network(object):
         #          similarly to how it would if all of its connections had dropped. 
         elif eventEntry.eventType == REJOIN:
             while src.outgoingCnxs <= MAX_OUTGOING:
-                self.addCxns(src)
+                self.addCxns(src, scheduledTime)
             self.eventQueue.put((self.getRestartTime(),event(srcNode = src,
                                                              destNode = None,
                                                              eventType = RESTART,
@@ -197,7 +198,7 @@ class Network(object):
         #           else "outgoing"
         elif eventEntry.eventType == DROP:
             dest.removeFromConnections(src.ipV4Addr)
-            self.addCxns(dest)
+            self.addCxns(dest, scheduledTime)
 
         # JOIN: A node is requesting to join the network. 
         #        Randomly chooses a seeder to contact for connection information.
@@ -258,7 +259,7 @@ class Network(object):
 
             PrTried = (rho**0.5) * (9 - omega) 
             PrTried /= (omega + 1) + (rho**0.5) * (9 - omega) 
-            table = src.triedTable if random.random() < PrTried else src.newTable
+            table = dest.triedTable if random.random() < PrTried else dest.newTable
 
             numRejects = 0
             accepted = False
@@ -269,7 +270,7 @@ class Network(object):
                     bucketPos = random.randint(0, len(table[bucketNum]) - 1)
                     ip = table[bucketNum].keys()[bucketPos]
                     timestamp = table[bucketNum][ip]
-                    t = ((globalTime - timestamp) / 600) * 10
+                    t = ((self.globalTime - timestamp) / 600) * 10
                     probAccept = min(1, (1.2**numRejects) / float(1+t))
                     accepted = random.random() < probAccept
                     if not accepted:
@@ -322,7 +323,7 @@ class Network(object):
                 dest.addToNew(ip, self.globalTime)
 
             for i in range(MAX_OUTGOING - len(dest.outgoingCnxs)):
-                self.addCxns(dest)
+                self.addCxns(dest, scheduledTime)
 
         # NEW_DAY: A node sends out ADDR messages to 2 peers with only its own ip
         #          and flushes its already sent to list.
