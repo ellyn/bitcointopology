@@ -8,6 +8,7 @@ addressInfo = collections.namedtuple('AddressInfo', ['nAttempts',
 class Node(object):
     def __init__(self, ipV4Addr, nodeType = PEER):
         self.nonce = random.randint(0, 65535)
+        self.addrNonce = 0
         self.ipV4Addr = ipV4Addr
         self.nodeType = nodeType
 
@@ -190,10 +191,10 @@ class Node(object):
         connectedPeersDict = {}
         for ip in self.incomingCnxs:
             if ip not in self.knownAddrIPs:
-                connectedPeersDict[ip] = hash(str(self.nonce) + ip)
+                connectedPeersDict[ip] = hash(str(self.addrNonce) + ip)
         for ip in self.outgoingCnxs:
             if ip not in self.knownAddrIPs:
-                connectedPeersDict[ip] = hash(str(self.nonce) + ip)
+                connectedPeersDict[ip] = hash(str(self.addrNonce) + ip)
         
         # take first two by hash lexographically
         firstTwoByHash = sorted(connectedPeersDict.items(), key=lambda x:x[1])[:2]
@@ -205,5 +206,5 @@ class Node(object):
 
     # On a new day, flush ADDR recipient list, and change nonce
     def notifyNewDay(self, day):
-        self.nonce = day
+        self.addrNonce = day
         self.knownAddrIPs = []
