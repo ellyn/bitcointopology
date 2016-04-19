@@ -169,9 +169,9 @@ class Node(object):
 
         flattenedIPs = []
         for bucket in self.triedTable:
-            flattenedIPs.append(bucket.keys())
+            flattenedIPs.extend(bucket.keys())
         for bucket in self.newTable:
-            flattenedIPs.append(bucket.keys())
+            flattenedIPs.extend(bucket.keys())
 
         numToSample = min(randomNum, len(flattenedIPs))
         ipList = random.sample(flattenedIPs, numToSample)
@@ -199,7 +199,7 @@ class Node(object):
         firstTwoByHash = sorted(connectedPeersDict.items(), key=lambda x:x[1])[:2]
         twoIPs = [ip for (ip, h) in firstTwoByHash]
 
-        self.knownAddrIPs.append(twoIPs)
+        self.knownAddrIPs.extend(twoIPs)
 
         return twoIPs
 
