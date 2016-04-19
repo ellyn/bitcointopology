@@ -45,7 +45,10 @@ parser.add_argument(
   type=str)
 
 metrics = {
-  'diameter': lambda n: n.getLCCDiameter()
+  'diameter': lambda n: n.getLCCDiameter(),
+  'darkNodeCount': lambda n: len([x for x in n.nodes if x.nodeType == DARK]),
+  'visibleNodeCount': lambda n: len([x for x in n.nodes if x.nodeType != DARK]),
+  'totalNodeCount': lambda n: len(n.nodes)
 }
 
 def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, outFile):
