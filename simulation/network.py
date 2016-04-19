@@ -48,6 +48,7 @@ class Network(object):
             self.ipToNodes[newNode.ipV4Addr] = newNode
             self.ipToNonDarkNodes[newNode.ipV4Addr] = newNode
             self.initNodes.append(newNode)
+            self.nodes.append(newNode)
             self.eventQueue.put((self.getRestartTime(), event(srcNode = newNode,    
                                                               destNode = None, 
                                                               eventType = RESTART, 
@@ -145,6 +146,14 @@ class Network(object):
         for seeder in self.seederNodes:
             seeder.updateNetworkInfo(network)
         self.lastSeederCrawlTime = self.globalTime
+
+    # Return # active nodes in network
+    def numNodes(self, val_fxn = lambda _: True):
+        network = []
+        for ip in self.ipToNonDarkNodes:
+            if self.ipToNodes[ip].incomingCnxs > []:
+                network.append(ip)
+        return len(network)
 
     def processNextEvent(self):
         self.globalTime, eventEntry = self.eventQueue.get()

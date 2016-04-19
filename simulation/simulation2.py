@@ -46,9 +46,7 @@ parser.add_argument(
 
 metrics = {
   'diameter': lambda n: n.getLCCDiameter(),
-  'darkNodeCount': lambda n: len([x for x in n.nodes if x.nodeType == DARK]),
-  'visibleNodeCount': lambda n: len([x for x in n.nodes if x.nodeType != DARK]),
-  'totalNodeCount': lambda n: len(n.nodes),
+  'totalNodeCount': lambda n: n.numNodes(),
   'connectionCount': lambda n: len([y for x in n.nodes for y in x.incomingCnxs])
 }
 
