@@ -21,6 +21,7 @@ class Network(object):
         self.ipToNonDarkNodes = {}
 
         self.IPs = [] # Currently taken IP addresses by nodes in network
+        self.IPs.append(HARDCODED_IP_SOURCE)
 
         self.lastSeederCrawlTime = 0.0
 
@@ -296,11 +297,20 @@ class Network(object):
         # src = the requesting node
         # dest = seeder node that will answer the request
         elif eventEntry.eventType == REQUEST_CONNECTION_INFO:
-            ipList = dest.getIPsForQuery() # List of IPs returned by the seeder node from the DNS query
-            self.eventQueue.put((scheduledTime, event(srcNode = dest, 
-                                                      destNode = src, 
-                                                      eventType = CONNECTION_INFO, 
-                                                      info = (DNS_MSG, ipList))))
+            if random.random() > SEEDER_REPLY_FAIL_RATE:
+                ipList = dest.getIPsForQuery() # List of IPs returned by the seeder node from the DNS query
+                self.eventQueue.put((scheduledTime, event(srcNode = dest, 
+                                                          destNode = src, 
+                                                          eventType = CONNECTION_INFO, 
+                                                          info = (DNS_MSG, ipList))))
+
+                # remember we requested the seeder, add potential event to realize seeder failure
+                src.requestedSeeder(dest.ipV4Addr, scheduledTime)
+                scheduledTime += WAIT_TIME_TO_CONCLUDE_REQUEST_LOST
+                self.eventQueue.put((scheduledTime, event(srcNode = src,
+                                                          destNode = None,
+                                                          eventType = USE_HARDCODED_IPS,
+                                                          info = dest.ipV4Addr)))
 
         # CONNECTION_INFO: A node is receiving information about nodes to connect to.
         # 
@@ -326,6 +336,9 @@ class Network(object):
 
                         forwardedEvent._replace(destNode = peerNode)
                         self.eventQueue.put((scheduledTime, forwardedEvent))
+            
+            elif msgType == DNS_MSG:
+                dest.requestedSeeder(src.ipV4Addr, self.globalTime)
 
             for ip in connections:
                 dest.learnIP(ip, src.ipV4Addr)
@@ -360,6 +373,25 @@ class Network(object):
 
             # place NEW_DAY event for tomorrow
             self.eventQueue.put((self.globalTime + ONE_DAY, eventEntry))
+
+        # USE_HARDCODED_IPS: Check if node did not receive a response from a seeder.
+        #                    If so, attempt connection from hardcoded list of IPs.
+        #
+        #                    This is different than CONNECTION_FAILURE because we do
+        #                    not want to keep a connection with a seeder.
+        #
+        # src = subject node
+        # dest = None
+        # info = ip of seeder in question
+        elif eventEntry.eventType == USE_HARDCODED_IPS:
+            if src.isSeederTimedout(eventEntry.info, self.globalTime):
+                # seeder timed out, use hardcoded IPs for connections
+                for ip in self.hardcodedIPs:
+                    src.learnIP(ip, HARDCODED_IP_SOURCE)
+                    src.addToNew(ip, self.globalTime)
+
+                for i in range(MAX_OUTGOING - len(src.outgoingCnxs)):
+                    self.addCxns(src, scheduledTime)
 
         else:
             raise Exception("Invalid event type")

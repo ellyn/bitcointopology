@@ -33,6 +33,9 @@ class Node(object):
         # For seeder nodes only: List of known IPs after crawling Bitcoin network
         if nodeType == SEEDER:
             self.knownIPs = []
+        else:
+            # Dictionary (ip, timestamp), needed to determine when seeder timedout (for hardcoded IP usage)
+            self.lastInteractionWithSeeder = {}
 
     # Called when discovering an IP and creates an AddressInfo object for the IP
     # ip is the IP that was discovered
@@ -40,6 +43,13 @@ class Node(object):
     def learnIP(self, ip, sourceIP):
         if ip not in self.ipToAddr:
             self.ipToAddr[ip] = addressInfo(nAttempts = 0, sourceIP = sourceIP)
+
+    def requestedSeeder(self, ip, timestamp):
+        self.lastInteractionWithSeeder[ip] = timestamp
+
+    def isSeederTimedout(self, ip, currentTimestamp):
+        timestamp = self.lastInteractionWithSeeder[ip]
+        return (currentTimestamp - timestamp) >= WAIT_TIME_TO_CONCLUDE_REQUEST_LOST
 
     def incrementFailedAttempts(self, ip):
         if ip in self.ipToAddr:

@@ -119,23 +119,105 @@ class TestNode(unittest.TestCase):
         self.assertEqual(numConnectionsBefore, numConnectionsAfter)
         self.network.eventQueue.put.assert_called_once_with((self.network.globalTime+latency, event(srcNode=self.nodePeer2, destNode=self.nodePeer, eventType=CONNECTION_FAILURE, info=None)))
     
-    '''
     # 2.1 DNS Seeders
-    def whenNodeJoinsNetwork_receivesIPsFromSeeder(self):
+    def test_whenNodeJoinsNetwork_receivesIPsFromSeeder(self):
         # mock: node(peer), network.EventQueue(JOIN event next)
         # call network.processNextEvent()
         # process additionally generated events
         # assert CONNECTION_INFO w/that node ID appears
         # assert learnIP() and addToNew() called
+        joinEvent = event(srcNode = self.nodePeer, destNode = None, eventType = JOIN, info = None)
+        self.network.eventQueue.put((0, joinEvent))
+
+        newTableSizeBefore = sum([len(b) for b in self.nodePeer.newTable])
+        triedTableSizeBefore = sum([len(b) for b in self.nodePeer.triedTable])
+
+        # process JOIN
+        self.network.processNextEvent()
+        
+        # get a hold of seeder node, place event back in eventQueue
+        eventTime, reqConInfoEvent = self.network.eventQueue.get()
+        if reqConInfoEvent.eventType == RESTART:
+            # small chance RESTART scheduled before REQUEST_CONNECTION_INFO
+            eventTime, reqConInfoEvent = self.network.eventQueue.get()
+        self.assertEquals(reqConInfoEvent.eventType, REQUEST_CONNECTION_INFO)
+        self.seederNode = reqConInfoEvent.destNode
+        self.network.eventQueue.put((eventTime, reqConInfoEvent))
+
+        # process REQUEST_CONNECTION_INFO and CONNECTION_INFO
+        self.network.processNextEvent()
+        self.network.processNextEvent()
+
+        newTableSizeAfter = sum([len(b) for b in self.nodePeer.newTable])
+        triedTableSizeAfter = sum([len(b) for b in self.nodePeer.triedTable])
+
+        # assert all new table entries from seeder
+        for ip in self.nodePeer.ipToAddr.keys():
+            sourceIP = self.nodePeer.ipToAddr[ip].sourceIP
+            self.assertEqual(sourceIP, self.seederNode.ipV4Addr)
+
+            self.assertTrue(ip in self.seederNode.knownIPs)
+        self.assertEqual(newTableSizeBefore + DNS_QUERY_SIZE, newTableSizeAfter)
+
+        # assert tried table remains empty
+        self.assertEqual(triedTableSizeBefore, 0)
+        self.assertEqual(triedTableSizeAfter, 0)
     
-    def whenNodeJoinsNetwork_andSeederFailsToReply_usesHardcodedIPs(self):
-        # is this implemented?
-        # mock: nodes(peer, seeder), eventQueue(JOIN)
-        # process event and further events
-        # assert CONNECTION_INFO event processed
-        # assert that event.info are only hardCodedIPs
+    def test_whenNodeJoinsNetwork_andSeederFailsToReply_usesHardcodedIPs(self):
+        joinEvent = event(srcNode=self.nodePeer, destNode=None, eventType=JOIN, info=None)
+        self.network.eventQueue.put((0, joinEvent))
+
+        newTableSizeBefore = sum([len(b) for b in self.nodePeer.newTable])
+        triedTableSizeBefore = sum([len(b) for b in self.nodePeer.triedTable])
+
+        # process JOIN
+        self.network.processNextEvent()
+        # remove RESTART event
+        time1, event1 = self.network.eventQueue.get()
+        time2, event2 = self.network.eventQueue.get()
+        if event1.eventType == REQUEST_CONNECTION_INFO:
+            self.network.eventQueue.put((time1, event1))
+        else:
+            self.network.eventQueue.put((time2, event2))
+        # process REQUEST_CONNECTION_INFO_EVENT
+        self.network.processNextEvent()
+        # remove CONNECTION_INFO event so seeder does nothing
+        time1, event1 = self.network.eventQueue.get()
+        time2, event2 = self.network.eventQueue.get()
+        if event1.eventType == USE_HARDCODED_IPS:
+            self.network.eventQueue.put((time1, event1))
+        else:
+            self.network.eventQueue.put((time2, event2))
+
+        # process USE_HARDCODED_IPS event
+        self.network.processNextEvent()
+
+        newTableSizeAfter = sum([len(b) for b in self.nodePeer.newTable])
+        triedTableSizeAfter = sum([len(b) for b in self.nodePeer.triedTable])
+
+        # assert all IPs in new table from HARDCODED_IP_SOURCE and network's hardcoded ip list
+        for ip in self.nodePeer.ipToAddr.keys():
+            sourceIP = self.nodePeer.ipToAddr[ip].sourceIP
+            self.assertEqual(sourceIP, HARDCODED_IP_SOURCE)
+
+            self.assertTrue(ip in self.network.hardcodedIPs)
+        self.assertEqual(newTableSizeBefore + len(self.network.hardcodedIPs), newTableSizeAfter)
+
+        # assert tried table remains empty
+        self.assertEqual(triedTableSizeBefore, 0)
+        self.assertEqual(triedTableSizeAfter, 0)
+
+        # assert 8 connect events in eventQueue, all with source nodePeer, dest ip in hardcoded_list
+        self.assertEqual(self.network.eventQueue.qsize(), 8)
+        for i in range(8):
+            timestamp, thisEvent = self.network.eventQueue.get()
+            
+            self.assertEqual(thisEvent.eventType, CONNECT)
+            self.assertEqual(thisEvent.srcNode, self.nodePeer)
+            self.assertTrue(thisEvent.destNode.ipV4Addr in self.network.hardcodedIPs)
+
     
-    def whenNodeRestarts_andNodeHasLessThanTwoOutgoingConnections_andElevenSecondsElapsed_receivesIPsFromSeeder(self):
+    '''def whenNodeRestarts_andNodeHasLessThanTwoOutgoingConnections_andElevenSecondsElapsed_receivesIPsFromSeeder(self):
         # mock: node(peer, seeder), eventQueue(RESTART)
         # DROP, then JOIN
         # node has less than 2 outgoing connections
@@ -143,12 +225,23 @@ class TestNode(unittest.TestCase):
         # assert event REQUEST_CONNECTION_INFO queued to seeder
     
     # 2.1 ADDR
-    def whenAddrMsgReceivedWithMoreThanThousand_sendingNodeBlacklisted(self):
-        #asdf
+    def test_whenAddrMsgReceivedWithMoreThanThousand_sendingNodeBlacklisted(self):
+        self.assertTrue(True)
+    '''
     
-    def whenOutgoingConnectionEstablishedWithPeer_receiveAddrMsgFromPeer(self):
-        #asdf
-    
+    def test_whenOutgoingConnectionEstablishedWithPeer_receiveAddrMsgFromPeer(self):
+        self.nodePeer.learnIP(self.nodePeer2.ipV4Addr, self.sourceIP)
+        self.nodePeer2.learnIP(self.nodePeer.ipV4Addr, self.sourceIP)
+
+        connectEvent = event(srcNode=self.nodePeer, destNode=self.nodePeer2, eventType=CONNECT, info=None)
+        self.network.eventQueue.put((self.network.globalTime, connectEvent))
+
+        # collect data, process event, collect data
+        self.network.processNextEvent()
+        
+        # assert data correct and monitored method called as expected
+        self.assertEqual(0,0)#numConnectionsBefore, numConnectionsAfter)
+    '''
     def whenIncomingConnectionEstablishedWithPeer_sendAddrMsgFromOwnTable(self):
         #asdf
     
@@ -334,7 +427,7 @@ class TestNode(unittest.TestCase):
             outIp = self.network.assignIP()
             self.nodePeer.outgoingCnxs.append(outIp)
 
-        connectionInfoEvent = event(srcNode=self.seederNode, destNode=self.nodePeer, eventType=CONNECTION_INFO, info=[ip])
+        connectionInfoEvent = event(srcNode=self.seederNode, destNode=self.nodePeer, eventType=CONNECTION_INFO, info=(DNS_MSG, [ip]))
         self.network.eventQueue.put((self.network.globalTime, connectionInfoEvent))
 
         self.nodePeer.learnIP(ip, self.seederNode.ipV4Addr)
@@ -385,7 +478,7 @@ class TestNode(unittest.TestCase):
             outIp = self.network.assignIP()
             self.nodePeer.outgoingCnxs.append(outIp)
 
-        connectionInfoEvent = event(srcNode=self.seederNode, destNode=self.nodePeer, eventType=CONNECTION_INFO, info=[ip])
+        connectionInfoEvent = event(srcNode=self.seederNode, destNode=self.nodePeer, eventType=CONNECTION_INFO, info=(DNS_MSG, [ip]))
         self.network.eventQueue.put((self.network.globalTime, connectionInfoEvent))
 
         self.nodePeer.learnIP(ip, self.seederNode.ipV4Addr)
