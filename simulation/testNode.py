@@ -1,5 +1,5 @@
 import unittest
-from mock import MagicMock
+import mock
 
 from node import Node
 from network import Network
@@ -76,10 +76,10 @@ class TestNode(unittest.TestCase):
         self.network.eventQueue.put((self.network.globalTime, connectEvent))
 
         # mock eventQueue.put from here forward so we can monitor when it is called
-        self.network.eventQueue.put = MagicMock(return_value=None)
+        self.network.eventQueue.put = mock.MagicMock(return_value=None)
         # mock randomness out
         latency = 0.1
-        self.network.generateLatency = MagicMock(return_value=latency)
+        self.network.generateLatency = mock.MagicMock(return_value=latency)
 
         # collect data, process event, collect data
         numConnectionsBefore = len(self.nodePeer.incomingCnxs)
@@ -105,10 +105,10 @@ class TestNode(unittest.TestCase):
         self.network.eventQueue.put((self.network.globalTime, connectEvent))
 
         # mock eventQueue.put from here forward so we can monitor when it is called
-        self.network.eventQueue.put = MagicMock(return_value=None)
+        self.network.eventQueue.put = mock.MagicMock(return_value=None)
         # mock randomness out
         latency = 0.1
-        self.network.generateLatency = MagicMock(return_value=latency)
+        self.network.generateLatency = mock.MagicMock(return_value=latency)
 
         # collect data, process event, collect data
         numConnectionsBefore = len(self.nodePeer.outgoingCnxs)
@@ -120,12 +120,10 @@ class TestNode(unittest.TestCase):
         self.network.eventQueue.put.assert_called_once_with((self.network.globalTime+latency, event(srcNode=self.nodePeer2, destNode=self.nodePeer, eventType=CONNECTION_FAILURE, info=None)))
     
     # 2.1 DNS Seeders
+    @mock.patch('network.SEEDER_REPLY_FAIL_RATE', -1.0)
     def test_whenNodeJoinsNetwork_receivesIPsFromSeeder(self):
-        # mock: node(peer), network.EventQueue(JOIN event next)
-        # call network.processNextEvent()
-        # process additionally generated events
-        # assert CONNECTION_INFO w/that node ID appears
-        # assert learnIP() and addToNew() called
+        # patch constant SEEDER_REPLY_FAIL_RATE so we automatically decide seeder does not timeout
+
         joinEvent = event(srcNode = self.nodePeer, destNode = None, eventType = JOIN, info = None)
         self.network.eventQueue.put((0, joinEvent))
 
@@ -163,7 +161,10 @@ class TestNode(unittest.TestCase):
         self.assertEqual(triedTableSizeBefore, 0)
         self.assertEqual(triedTableSizeAfter, 0)
     
+    @mock.patch('network.SEEDER_REPLY_FAIL_RATE', 2.0)
     def test_whenNodeJoinsNetwork_andSeederFailsToReply_usesHardcodedIPs(self):
+        # patch constant SEEDER_REPLY_FAIL_RATE so we automatically decide seeder will timeout
+
         joinEvent = event(srcNode=self.nodePeer, destNode=None, eventType=JOIN, info=None)
         self.network.eventQueue.put((0, joinEvent))
 
@@ -172,6 +173,7 @@ class TestNode(unittest.TestCase):
 
         # process JOIN
         self.network.processNextEvent()
+
         # remove RESTART event
         time1, event1 = self.network.eventQueue.get()
         time2, event2 = self.network.eventQueue.get()
@@ -179,17 +181,9 @@ class TestNode(unittest.TestCase):
             self.network.eventQueue.put((time1, event1))
         else:
             self.network.eventQueue.put((time2, event2))
-        # process REQUEST_CONNECTION_INFO_EVENT
-        self.network.processNextEvent()
-        # remove CONNECTION_INFO event so seeder does nothing
-        time1, event1 = self.network.eventQueue.get()
-        time2, event2 = self.network.eventQueue.get()
-        if event1.eventType == USE_HARDCODED_IPS:
-            self.network.eventQueue.put((time1, event1))
-        else:
-            self.network.eventQueue.put((time2, event2))
 
-        # process USE_HARDCODED_IPS event
+        # process REQUEST_CONNECTION_INFO and USE_HARDCODED_IPS events
+        self.network.processNextEvent()
         self.network.processNextEvent()
 
         newTableSizeAfter = sum([len(b) for b in self.nodePeer.newTable])
