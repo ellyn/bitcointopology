@@ -198,6 +198,12 @@ class Network(object):
                                                              destNode = None,
                                                              eventType = RESTART,
                                                              info = None)))
+            # in 11 seconds, potentially request seeder via AFTER_REJOIN_MAYBE_REQUEST_SEEDER event
+            scheduledTime += 11
+            self.eventQueue.put((scheduledTime, event(srcNode = src,
+                                                      destNode = None,
+                                                      eventType = AFTER_REJOIN_MAYBE_REQUEST_SEEDER,
+                                                      info = None)))
 
         # DROP: A node is notified that one of its connections was dropped 
         #        and updates its list of connections accordingly.
@@ -384,6 +390,21 @@ class Network(object):
 
             for i in range(MAX_OUTGOING - len(src.outgoingCnxs)):
                 self.addCxns(src, scheduledTime)
+
+        # AFTER_REJOIN_MAYBE_REQUEST_SEEDER: After rejoining, the src node attempted to make connections
+        #                                    based on its table entries. This event arises 11 seconds
+        #                                    after the REJOIN event. If less than 2 outgoing connections
+        #                                    have been made, query a seeder.
+        #
+        # src = subject node
+        # dest = None
+        elif eventEntry.eventType == AFTER_REJOIN_MAYBE_REQUEST_SEEDER:
+            if len(src.outgoingCnxs) < 2:
+                seeder = self.seederNodes[random.randint(0, NUM_SEEDERS - 1)]
+                self.eventQueue.put((scheduledTime, event(srcNode = src,
+                                                          destNode = seeder,
+                                                          eventType = REQUEST_CONNECTION_INFO,
+                                                          info = None)))
 
         else:
             raise Exception("Invalid event type")

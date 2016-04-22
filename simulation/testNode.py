@@ -210,15 +210,38 @@ class TestNode(unittest.TestCase):
             self.assertEqual(thisEvent.srcNode, self.nodePeer)
             self.assertTrue(thisEvent.destNode.ipV4Addr in self.network.hardcodedIPs)
 
+    @mock.patch('network.MAX_OUTGOING', 0)
+    def test_whenNodeRestarts_andNodeHasLessThanTwoOutgoingConnections_andElevenSecondsElapsed_receivesIPsFromSeeder(self):
+        # patch MAX_OUTGOING instances in network.py so our node doesnt make any connections
+        # mock network.getRestartTime() so that event is out of scope of our timeframe
+        self.network.getRestartTime = mock.Mock(return_value = 999)
+
+        restartEvent = event(srcNode=self.nodePeer, destNode=None, eventType=RESTART, info=None)
+        self.network.eventQueue.put((0, restartEvent))
+
+        # process RESTART event
+        self.network.processNextEvent()
+
+        # get time of REJOIN, place back in eventQueue
+        rejoinTime, rejoinEvent = self.network.eventQueue.get()
+        self.assertEqual(rejoinEvent.eventType, REJOIN)
+        self.network.eventQueue.put((rejoinTime, rejoinEvent))
+
+        # process REJOIN, AFTER_REJOIN_MAYBE_REQUEST_SEEDER events
+        self.network.processNextEvent()
+        self.network.processNextEvent()
+
+        nextTime, nextEvent = self.network.eventQueue.get()
+
+        # assert seeder request more than 11 seconds from rejoin event
+        self.assertTrue(rejoinTime + 11 <= nextTime)
+
+        # assert correct nodes involved in REQUEST_CONNECTION_INFO event
+        self.assertEqual(nextEvent.srcNode, self.nodePeer)
+        #self.assertTrue(nextEvent.destNode in self.network.seederNodes)
+        self.assertEqual(nextEvent.eventType, REQUEST_CONNECTION_INFO)
     
-    '''def whenNodeRestarts_andNodeHasLessThanTwoOutgoingConnections_andElevenSecondsElapsed_receivesIPsFromSeeder(self):
-        # mock: node(peer, seeder), eventQueue(RESTART)
-        # DROP, then JOIN
-        # node has less than 2 outgoing connections
-        # 11 seconds elapsed
-        # assert event REQUEST_CONNECTION_INFO queued to seeder
-    
-    # 2.1 ADDR
+    '''# 2.1 ADDR
     def test_whenAddrMsgReceivedWithMoreThanThousand_sendingNodeBlacklisted(self):
         self.assertTrue(True)
     '''
