@@ -37,6 +37,9 @@ class TestNode(unittest.TestCase):
         self.sourceIP = self.network.assignIP()
 
     def setUp(self):
+        # mock network.getRestartTime() so that event stays out of the way
+        self.network.getRestartTime = mock.Mock(return_value = 999)
+
         # empty eventQueue
         self.network.eventQueue = Queue.PriorityQueue()
 
@@ -122,8 +125,6 @@ class TestNode(unittest.TestCase):
     @mock.patch('network.SEEDER_REPLY_FAIL_RATE', -1.0)
     def test_whenNodeJoinsNetwork_receivesIPsFromSeeder(self):
         # patch constant SEEDER_REPLY_FAIL_RATE so we automatically decide seeder does not timeout
-        # mock network.getRestartTime() so that event is out of scope of our timeframe
-        self.network.getRestartTime = mock.Mock(return_value = 999)
 
         joinEvent = event(srcNode = self.nodePeer, destNode = None, eventType = JOIN, info = None)
         self.network.eventQueue.put((0, joinEvent))
@@ -211,8 +212,6 @@ class TestNode(unittest.TestCase):
     @mock.patch('network.MAX_OUTGOING', 0)
     def test_whenNodeRestarts_andNodeHasLessThanTwoOutgoingConnections_andElevenSecondsElapsed_receivesIPsFromSeeder(self):
         # patch MAX_OUTGOING instances in network.py so our node doesnt make any connections
-        # mock network.getRestartTime() so that event is out of scope of our timeframe
-        self.network.getRestartTime = mock.Mock(return_value = 999)
 
         restartEvent = event(srcNode=self.nodePeer, destNode=None, eventType=RESTART, info=None)
         self.network.eventQueue.put((0, restartEvent))
@@ -245,9 +244,6 @@ class TestNode(unittest.TestCase):
     '''
     
     def test_whenOutgoingConnectionEstablishedWithPeer_receiveAddrMsgFromPeer(self):
-        # mock network.getRestartTime() so that event is out of scope of our timeframe
-        self.network.getRestartTime = mock.Mock(return_value = 999)
-
         # prepare nodes for CONNECT
         self.nodePeer.learnIP(self.nodePeer2.ipV4Addr, self.sourceIP)
         self.nodePeer2.learnIP(self.nodePeer.ipV4Addr, self.sourceIP)
