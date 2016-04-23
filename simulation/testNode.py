@@ -236,7 +236,7 @@ class TestNode(unittest.TestCase):
 
         # assert correct nodes involved in REQUEST_CONNECTION_INFO event
         self.assertEqual(nextEvent.srcNode, self.nodePeer)
-        #self.assertTrue(nextEvent.destNode in self.network.seederNodes)
+        self.assertTrue(nextEvent.destNode in self.network.seederNodes)
         self.assertEqual(nextEvent.eventType, REQUEST_CONNECTION_INFO)
     
     '''# 2.1 ADDR
@@ -245,17 +245,43 @@ class TestNode(unittest.TestCase):
     '''
     
     def test_whenOutgoingConnectionEstablishedWithPeer_receiveAddrMsgFromPeer(self):
+        # mock network.getRestartTime() so that event is out of scope of our timeframe
+        self.network.getRestartTime = mock.Mock(return_value = 999)
+
+        # prepare nodes for CONNECT
         self.nodePeer.learnIP(self.nodePeer2.ipV4Addr, self.sourceIP)
         self.nodePeer2.learnIP(self.nodePeer.ipV4Addr, self.sourceIP)
+        # populate nodePeer2's tables with some IPs (that will be sent in ADDR)
+        someIPs = [self.network.assignIP() for _ in range(100)]
+        for ip in someIPs[:50]:
+            self.nodePeer2.learnIP(ip, self.sourceIP)
+            self.nodePeer2.addToTried(ip, 0)
+        for ip in someIPs[50:]:
+            self.nodePeer2.learnIP(ip, self.sourceIP)
+            self.nodePeer2.addToNew(ip, 0)
 
+        # prepare eventQueue
         connectEvent = event(srcNode=self.nodePeer, destNode=self.nodePeer2, eventType=CONNECT, info=None)
         self.network.eventQueue.put((self.network.globalTime, connectEvent))
 
-        # collect data, process event, collect data
+        # process CONNECT event
         self.network.processNextEvent()
+
+        # assert generated event is ADDR between correct nodes
+        nextTime, nextEvent = self.network.eventQueue.get()
+        self.assertEqual(nextEvent.eventType, CONNECTION_INFO)
+        self.assertEqual(nextEvent.srcNode, self.nodePeer2)
+        self.assertEqual(nextEvent.destNode, self.nodePeer)
+        self.assertEqual(nextEvent.info[0], ADDR_MSG)
+
+        # assert sent IPs come from nodePeer2's tables
+        flattenedIPs = []
+        for bucket in self.nodePeer2.triedTable:
+            flattenedIPs.extend(bucket.keys())
+        for bucket in self.nodePeer2.newTable:
+            flattenedIPs.extend(bucket.keys())
+        [self.assertTrue(ip in flattenedIPs) for ip in nextEvent.info[1]]
         
-        # assert data correct and monitored method called as expected
-        self.assertEqual(0,0)#numConnectionsBefore, numConnectionsAfter)
     '''
     def whenIncomingConnectionEstablishedWithPeer_sendAddrMsgFromOwnTable(self):
         #asdf
