@@ -9,7 +9,6 @@ from constants import *
 
 # python testNode.py
 # ^ runs all testcases in this file
-# may need to run `sudo pip install -U mock` for mock library because python 2.7
 
 class TestNode(unittest.TestCase):
     @classmethod
@@ -76,10 +75,10 @@ class TestNode(unittest.TestCase):
         self.network.eventQueue.put((self.network.globalTime, connectEvent))
 
         # mock eventQueue.put from here forward so we can monitor when it is called
-        self.network.eventQueue.put = mock.MagicMock(return_value=None)
+        self.network.eventQueue.put = mock.Mock()
         # mock randomness out
         latency = 0.1
-        self.network.generateLatency = mock.MagicMock(return_value=latency)
+        self.network.generateLatency = mock.Mock(return_value=latency)
 
         # collect data, process event, collect data
         numConnectionsBefore = len(self.nodePeer.incomingCnxs)
@@ -105,10 +104,10 @@ class TestNode(unittest.TestCase):
         self.network.eventQueue.put((self.network.globalTime, connectEvent))
 
         # mock eventQueue.put from here forward so we can monitor when it is called
-        self.network.eventQueue.put = mock.MagicMock(return_value=None)
+        self.network.eventQueue.put = mock.Mock()
         # mock randomness out
         latency = 0.1
-        self.network.generateLatency = mock.MagicMock(return_value=latency)
+        self.network.generateLatency = mock.Mock(return_value=latency)
 
         # collect data, process event, collect data
         numConnectionsBefore = len(self.nodePeer.outgoingCnxs)
@@ -123,6 +122,8 @@ class TestNode(unittest.TestCase):
     @mock.patch('network.SEEDER_REPLY_FAIL_RATE', -1.0)
     def test_whenNodeJoinsNetwork_receivesIPsFromSeeder(self):
         # patch constant SEEDER_REPLY_FAIL_RATE so we automatically decide seeder does not timeout
+        # mock network.getRestartTime() so that event is out of scope of our timeframe
+        self.network.getRestartTime = mock.Mock(return_value = 999)
 
         joinEvent = event(srcNode = self.nodePeer, destNode = None, eventType = JOIN, info = None)
         self.network.eventQueue.put((0, joinEvent))
@@ -135,9 +136,6 @@ class TestNode(unittest.TestCase):
         
         # get a hold of seeder node, place event back in eventQueue
         eventTime, reqConInfoEvent = self.network.eventQueue.get()
-        if reqConInfoEvent.eventType == RESTART:
-            # small chance RESTART scheduled before REQUEST_CONNECTION_INFO
-            eventTime, reqConInfoEvent = self.network.eventQueue.get()
         self.assertEquals(reqConInfoEvent.eventType, REQUEST_CONNECTION_INFO)
         self.seederNode = reqConInfoEvent.destNode
         self.network.eventQueue.put((eventTime, reqConInfoEvent))
@@ -201,9 +199,9 @@ class TestNode(unittest.TestCase):
         self.assertEqual(triedTableSizeBefore, 0)
         self.assertEqual(triedTableSizeAfter, 0)
 
-        # assert 8 connect events in eventQueue, all with source nodePeer, dest ip in hardcoded_list
-        self.assertEqual(self.network.eventQueue.qsize(), 8)
-        for i in range(8):
+        # assert MAX_OUTGOING connect events in eventQueue, all with source nodePeer, dest ip in hardcoded_list
+        self.assertEqual(self.network.eventQueue.qsize(), MAX_OUTGOING)
+        for i in range(MAX_OUTGOING):
             timestamp, thisEvent = self.network.eventQueue.get()
             
             self.assertEqual(thisEvent.eventType, CONNECT)
