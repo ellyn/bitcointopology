@@ -73,6 +73,10 @@ def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, ou
 
   open('metrics.json', 'w').write(json.dumps(metric_log))
   
+  for event in set(network.eventLog):
+    count = network.eventLog.count(event)
+    print('{} events of type {}!'.format(count, reversedEventTypes[event]))
+  
   realEnd = time.time()
 
   print('Simulation done in {} seconds. Writing out network state & initialization parameters to {}.'.format(realEnd - realStart, outFile))

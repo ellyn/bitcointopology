@@ -30,6 +30,8 @@ class Network(object):
 
         self.generateAllNodes(totalNodes - numInitNodes)
 
+        self.eventLog = []
+
     def assignIP(self):
         ipTaken = True
         while ipTaken:
@@ -161,6 +163,7 @@ class Network(object):
 
     def processNextEvent(self):
         self.globalTime, eventEntry = self.eventQueue.get()
+        self.eventLog.append(eventEntry.eventType)
 
         if self.lastSeederCrawlTime - self.globalTime >= TIME_BETWEEN_CRAWLS:
             self.simulateSeederCrawl()
