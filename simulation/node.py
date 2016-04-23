@@ -11,6 +11,7 @@ class Node(object):
         self.addrNonce = 0
         self.ipV4Addr = ipV4Addr
         self.nodeType = nodeType
+        self.isOnline = False
 
         # A table is a list of buckets (dict) that map an IP (str) to a timestamp (float)
         self.triedTable = [{} for _ in range(NUM_TRIED_BUCKETS)]

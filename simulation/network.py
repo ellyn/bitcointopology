@@ -46,6 +46,7 @@ class Network(object):
         # Create initial nodes
         for i in range(numInitNodes):
             newNode = Node(self.assignIP())
+            newNode.isOnline = True
             self.ipToNodes[newNode.ipV4Addr] = newNode
             self.ipToNonDarkNodes[newNode.ipV4Addr] = newNode
             self.initNodes.append(newNode)
@@ -64,6 +65,7 @@ class Network(object):
         # Create seeder nodes
         for i in range(NUM_SEEDERS):
             seederNode = Node(self.assignIP(), nodeType = SEEDER)
+            seederNode.isOnline = True
             self.ipToNodes[seederNode.ipV4Addr] = seederNode
             self.seederNodes.append(seederNode)
 
@@ -130,6 +132,7 @@ class Network(object):
                 t = ((self.globalTime - timestamp) / 600) * 10
                 probAccept = min(1, (1.2**numRejects) / float(1 + t))
                 accepted = random.random() < probAccept
+                accepted = accepted and self.ipToNodes[ip].isOnline
                 numRejects += 1
 
         self.eventQueue.put((scheduledTime, event(srcNode = node, 
@@ -184,6 +187,7 @@ class Network(object):
                                                           info = "incoming")))
             src.incomingCnxs = []
             src.outgoingCnxs = []
+            src.isOnline = False
             self.eventQueue.put((scheduledTime + latency, event(srcNode = src,
                                                                 destNode = None,
                                                                 eventType = REJOIN,
@@ -192,6 +196,7 @@ class Network(object):
         # REJOIN: A node rejoins the network after restarting and tries to make 8 connections,
         #          similarly to how it would if all of its connections had dropped. 
         elif eventEntry.eventType == REJOIN:
+            src.isOnline = True
             while src.outgoingCnxs <= MAX_OUTGOING:
                 self.addCxns(src, scheduledTime)
             self.eventQueue.put((self.getRestartTime(),event(srcNode = src,
@@ -222,6 +227,7 @@ class Network(object):
         #
         # src = node that is requesting to join
         elif eventEntry.eventType == JOIN:
+            src.isOnline = True
             seeder = self.seederNodes[random.randint(0, NUM_SEEDERS - 1)]
             self.eventQueue.put((scheduledTime, event(srcNode = src, 
                                                       destNode = seeder, 
@@ -239,7 +245,7 @@ class Network(object):
         elif eventEntry.eventType == CONNECT:
             destHasRoom = len(dest.incomingCnxs) < MAX_INCOMING
             srcHasRoom = len(src.outgoingCnxs) < MAX_OUTGOING
-            if dest.nodeType != DARK and destHasRoom and srcHasRoom:
+            if dest.isOnline and dest.nodeType != DARK and destHasRoom and srcHasRoom:
                 src.addToTried(dest.ipV4Addr, self.globalTime)
 
                 dest.learnIP(src.ipV4Addr, src.ipV4Addr)
