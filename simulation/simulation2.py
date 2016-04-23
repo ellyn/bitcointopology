@@ -45,7 +45,7 @@ parser.add_argument(
   type=str)
 
 metrics = {
-  'diameter': lambda n: n.getLCCDiameter(),
+#  'diameter': lambda n: n.getLCCDiameter(),
   'totalNodeCount': lambda n: n.numNodes(),
   'connectionCount': lambda n: len([y for x in n.nodes for y in x.incomingCnxs])
 }
@@ -90,6 +90,8 @@ def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, ou
       'latencyType': latencyType,
       'darkNodeProb': darkNodeProb
     }, outFile)
+
+  network.drawGraph(filename = 'graph.png')
 
   print('Network state written. Terminating.') 
 

@@ -125,22 +125,24 @@ class Network(object):
 
         table = node.triedTable if random.random() < PrTried else node.newTable
         ip = None
-        while not accepted:
-            bucketNum = random.randint(0, len(table) - 1)
-            if len(table[bucketNum]) > 0:
-                bucketPos = random.randint(0, len(table[bucketNum]) - 1)
-                ip = table[bucketNum].keys()[bucketPos]
-                timestamp = table[bucketNum][ip]
-                t = ((self.globalTime - timestamp) / 600) * 10
-                probAccept = min(1, (1.2**numRejects) / float(1 + t))
-                accepted = random.random() < probAccept
-                accepted = accepted and self.ipToNodes[ip].isOnline
-                numRejects += 1
+        if len(node.outgoingCnxs) < MAX_OUTGOING:
+          while not accepted:
+              bucketNum = random.randint(0, len(table) - 1)
+              if len(table[bucketNum]) > 0:
+                  bucketPos = random.randint(0, len(table[bucketNum]) - 1)
+                  ip = table[bucketNum].keys()[bucketPos]
+                  timestamp = table[bucketNum][ip]
+                  t = ((self.globalTime - timestamp) / 600) * 10
+                  probAccept = min(1, ((1.2)**numRejects) / float(1 + t))
+                  accepted = random.random() < probAccept
+                  # accepted = accepted and self.ipToNodes[ip].isOnline
+                  # NOTE cut - node shouldn't know this
+                  numRejects += 1
 
-        self.eventQueue.put((scheduledTime, event(srcNode = node, 
-                                                  destNode = self.ipToNodes[ip],
-                                                  eventType = CONNECT, 
-                                                  info = None)))
+          self.eventQueue.put((scheduledTime, event(srcNode = node, 
+                                                    destNode = self.ipToNodes[ip],
+                                                    eventType = CONNECT, 
+                                                    info = None)))
 
     def simulateSeederCrawl(self):
         # Collect IP addresses of all reachable nodes
@@ -289,22 +291,24 @@ class Network(object):
             numRejects = 0
             accepted = False
             ip = None
-            while not accepted:
-                bucketNum = random.randint(0, len(table) - 1)
-                if len(table[bucketNum]) > 0:
-                    bucketPos = random.randint(0, len(table[bucketNum]) - 1)
-                    ip = table[bucketNum].keys()[bucketPos]
-                    timestamp = table[bucketNum][ip]
-                    t = ((self.globalTime - timestamp) / 600) * 10
-                    probAccept = min(1, (1.2**numRejects) / float(1+t))
-                    accepted = random.random() < probAccept
-                    if not accepted:
-                        numRejects += 1
 
-            self.eventQueue.put((scheduledTime, event(srcNode = dest,
-                                                      destNode = self.ipToNodes[ip],
-                                                      eventType = CONNECT,
-                                                      info = None)))
+            if len(dest.outgoingCnxs) < MAX_OUTGOING:
+              while not accepted:
+                  bucketNum = random.randint(0, len(table) - 1)
+                  if len(table[bucketNum]) > 0:
+                      bucketPos = random.randint(0, len(table[bucketNum]) - 1)
+                      ip = table[bucketNum].keys()[bucketPos]
+                      timestamp = table[bucketNum][ip]
+                      t = ((self.globalTime - timestamp) / 600) * 10
+                      probAccept = min(1, (1.2**numRejects) / float(1+t))
+                      accepted = random.random() < probAccept
+                      if not accepted:
+                          numRejects += 1
+
+              self.eventQueue.put((scheduledTime, event(srcNode = dest,
+                                                        destNode = self.ipToNodes[ip],
+                                                        eventType = CONNECT,
+                                                        info = None)))
 
         # REQUEST_CONNECTION_INFO: A node is requesting information about nodes 
         #                           to connect to. Simulates a DNS query to a seeder node.
@@ -338,6 +342,8 @@ class Network(object):
 
             if msgType == ADDR_MSG:
                 dest.addToKnownAddr(src.ipV4Addr)
+
+                self.eventLog.append(CONNECTION_INFO_ADDR)
 
                 if len(connections) >= MAX_ADDRS_PER_MSG:
                     dest.blacklistIP(src.ipV4Addr)
@@ -462,7 +468,7 @@ class Network(object):
         elif mode is GRAPH_SAMPLE_RND:
           newGraph = nx.Graph()
           included = set([])
-          for node in grph:
+          for node in graph:
             if random.random() < GRAPH_SAMPLE_RND_RATIO:
               newGraph.add_node(node)
               included.add(node)
@@ -482,7 +488,7 @@ class Network(object):
               for neighbor in graph.neighbors(node):
                   newGraph.add_edge(node, neighbor, key = 0)
           graph = newGraph 
-        nx.draw(graph)
+        nx.draw_circular(graph)
         plt.savefig(filename)
 
     # Termination Condition: Global Time
