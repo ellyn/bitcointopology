@@ -182,6 +182,9 @@ class Node(object):
     def blacklistIP(self, ip):
         self.blacklistedIPs.append(ip)
 
+    def isIpBlacklisted(self, ip):
+        return (ip in self.blacklistedIPs)
+
     def addToKnownAddr(self, ip):
         self.knownAddrIPs.append(ip)
 

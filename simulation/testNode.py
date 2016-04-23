@@ -238,10 +238,55 @@ class TestNode(unittest.TestCase):
         self.assertTrue(nextEvent.destNode in self.network.seederNodes)
         self.assertEqual(nextEvent.eventType, REQUEST_CONNECTION_INFO)
     
-    '''# 2.1 ADDR
+    # 2.1 ADDR
     def test_whenAddrMsgReceivedWithMoreThanThousand_sendingNodeBlacklisted(self):
         self.assertTrue(True)
-    '''
+
+    @mock.patch('node.Node.selectAddrs')
+    def test_whenBlacklistedNodeAttemptsToConnect_ignoreIt(self, mock_node_selectAddrs):
+        # patch node.selectAddrs() to return too many addresses such that another node will blacklist it
+        tooManyIPs = [[self.network.assignIP() for _ in range(MAX_ADDRS_PER_MSG+1)]]
+        mock_node_selectAddrs.return_value = tooManyIPs
+
+        # take measurements before
+        totalConnectionsBefore1 = sum(self.nodePeer.incomingCnxs) + sum(self.nodePeer.outgoingCnxs)
+        totalConnectionsBefore2 = sum(self.nodePeer2.incomingCnxs) + sum(self.nodePeer2.outgoingCnxs)
+        newTableSizeBefore = sum([len(b) for b in self.nodePeer.newTable])
+        triedTableSizeBefore = sum([len(b) for b in self.nodePeer.triedTable])
+
+        # prepare nodes for CONNECT
+        self.nodePeer.learnIP(self.nodePeer2.ipV4Addr, self.sourceIP)
+        self.nodePeer2.learnIP(self.nodePeer.ipV4Addr, self.sourceIP)
+
+        # prepare eventQueue
+        connectEvent = event(srcNode=self.nodePeer, destNode=self.nodePeer2, eventType=CONNECT, info=None)
+        self.network.eventQueue.put((self.network.globalTime, connectEvent))
+
+        # process CONNECT, CONNECTION_INFO events
+        self.network.processNextEvent()
+        self.network.processNextEvent()
+
+        # assert ip is blacklisted
+        self.assertTrue(self.nodePeer2.ipV4Addr in self.nodePeer.blacklistedIPs)
+
+        # assert no connections kept
+        totalConnectionsAfter1 = sum(self.nodePeer.incomingCnxs) + sum(self.nodePeer.outgoingCnxs)
+        totalConnectionsAfter2 = sum(self.nodePeer2.incomingCnxs) + sum(self.nodePeer2.outgoingCnxs)
+        self.assertEqual(totalConnectionsBefore1, totalConnectionsAfter1)
+        self.assertEqual(totalConnectionsBefore2, totalConnectionsAfter2)
+
+        # assert nothing was added to new table
+        newTableSizeAfter = sum([len(b) for b in self.nodePeer.newTable])
+        triedTableSizeAfter = sum([len(b) for b in self.nodePeer.triedTable])
+        self.assertEqual(newTableSizeBefore, newTableSizeAfter)
+        self.assertEqual(triedTableSizeBefore + 1, triedTableSizeAfter)
+
+        # assert nodePeer's tried table only contains blacklisted ip
+        flattenedIPs = []
+        for bucket in self.nodePeer.triedTable:
+            flattenedIPs.extend(bucket.keys())
+        self.assertEqual(len(flattenedIPs), 1)
+        self.assertTrue(self.nodePeer2.ipV4Addr in flattenedIPs)
     
     def test_whenOutgoingConnectionEstablishedWithPeer_receiveAddrMsgFromPeer(self):
         # prepare nodes for CONNECT

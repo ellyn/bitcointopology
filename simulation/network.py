@@ -344,12 +344,17 @@ class Network(object):
                         forwardedEvent._replace(destNode = peerNode)
                         self.eventQueue.put((scheduledTime, forwardedEvent))
 
-            for ip in connections:
-                dest.learnIP(ip, src.ipV4Addr)
-                dest.addToNew(ip, self.globalTime)
+            if dest.isIpBlacklisted(src.ipV4Addr):
+                # ensure this node-pair is not connected
+                dest.removeFromConnections(src.ipV4Addr)
+                src.removeFromConnections(dest.ipV4Addr)
+            else:
+                for ip in connections:
+                    dest.learnIP(ip, src.ipV4Addr)
+                    dest.addToNew(ip, self.globalTime)
 
-            for i in range(MAX_OUTGOING - len(dest.outgoingCnxs)):
-                self.addCxns(dest, scheduledTime)
+                for i in range(MAX_OUTGOING - len(dest.outgoingCnxs)):
+                    self.addCxns(dest, scheduledTime)
 
         # NEW_DAY: A node sends out ADDR messages to 2 peers with only its own ip
         #          and flushes its already sent to list.
