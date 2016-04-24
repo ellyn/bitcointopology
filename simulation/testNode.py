@@ -47,6 +47,7 @@ class TestNode(unittest.TestCase):
         oldIP = self.nodePeer.ipV4Addr
         del self.network.ipToNodes[oldIP]
         self.nodePeer = Node(oldIP)
+        self.nodePeer.isOnline = True
         self.network.ipToNodes[oldIP] = self.nodePeer
         self.network.ipToNonDarkNodes[oldIP] = self.nodePeer
         self.network.nodes[self.nodePeerIndex] = self.nodePeer
@@ -54,6 +55,7 @@ class TestNode(unittest.TestCase):
         oldIP = self.nodePeer2.ipV4Addr
         del self.network.ipToNodes[oldIP]
         self.nodePeer2 = Node(oldIP)
+        self.nodePeer2.isOnline = True
         self.network.ipToNodes[oldIP] = self.nodePeer2
         self.network.ipToNonDarkNodes[oldIP] = self.nodePeer2
         self.network.initNodes[self.nodePeer2Index] = self.nodePeer2
