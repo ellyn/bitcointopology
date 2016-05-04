@@ -488,7 +488,7 @@ class Network(object):
               for neighbor in graph.neighbors(node):
                   newGraph.add_edge(node, neighbor, key = 0)
           graph = newGraph 
-        nx.draw_circular(graph)
+        nx.draw(graph)
         plt.savefig(filename)
 
     # Termination Condition: Global Time

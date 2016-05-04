@@ -47,7 +47,8 @@ parser.add_argument(
 metrics = {
 #  'diameter': lambda n: n.getLCCDiameter(),
   'totalNodeCount': lambda n: n.numNodes(),
-  'connectionCount': lambda n: len([y for x in n.nodes for y in x.incomingCnxs])
+  'connectionCount': lambda n: len([y for x in n.nodes for y in x.incomingCnxs]),
+  'connectionDistribution': lambda n: [len(x.incomingCnxs) + len(x.outgoingCnxs) for x in n.nodes]
 }
 
 def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, outFile):
