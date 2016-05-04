@@ -10,7 +10,7 @@ event = collections.namedtuple('Event', ['srcNode', 'destNode', 'eventType', 'in
 
 class Network(object):
     def __init__(self, numInitNodes = NUM_INIT_NODES, totalNodes = NUM_NODES, 
-                        latencyInfo = None, darkNodeProb = 0.5):
+                        latencyInfo = None, darkNodeProb = 0.9):
         self.eventQueue = Queue.PriorityQueue()
         self.globalTime = 0.0
         self.darkNodeProb = darkNodeProb
