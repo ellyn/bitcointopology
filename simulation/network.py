@@ -511,6 +511,16 @@ class Network(object):
         except nx.NetworkXError:
             return -1
 
+    # Graph Minimum Cut
+    # Number of edges present in the minimum edge cut
+    def getMinCut(self):
+        graph = self.getGraph()
+        try: 
+          min_cut = nx.minimum_edge_cut(graph)
+        except: # not connected
+          return -1
+        return len(min_cut)
+
     # Termination Condition: Diameter of largest connected component
     # Terminate once the network's largest connected component has reached a given diameter
     # (in case the network isn't connected)

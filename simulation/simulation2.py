@@ -46,6 +46,7 @@ parser.add_argument(
 
 metrics = {
 #  'diameter': lambda n: n.getLCCDiameter(),
+  'minCut': lambda n: n.getMinCut(),
   'totalNodeCount': lambda n: n.numNodes(),
   'connectionCount': lambda n: len([y for x in n.nodes for y in x.incomingCnxs]),
   'connectionDistribution': lambda n: [len(x.incomingCnxs) + len(x.outgoingCnxs) for x in n.nodes]
