@@ -2,6 +2,7 @@ import collections, itertools, Queue
 import networkx as nx
 import matplotlib.pyplot as plt
 import math
+import numpy as np
 from constants import *
 from node import Node
 
@@ -9,7 +10,7 @@ event = collections.namedtuple('Event', ['srcNode', 'destNode', 'eventType', 'in
 
 class Network(object):
     def __init__(self, numInitNodes = NUM_INIT_NODES, totalNodes = NUM_NODES, 
-                        latencyInfo = None, darkNodeProb = 0.5):
+                        latencyInfo = None, darkNodeProb = 0.9):
         self.eventQueue = Queue.PriorityQueue()
         self.globalTime = 0.0
         self.darkNodeProb = darkNodeProb
@@ -40,9 +41,10 @@ class Network(object):
         self.IPs.append(newIP)
         return newIP
 
-    def getRestartTime(self):# Want an exponential distribution with 25 percent of nodes dropping every 10 hours
-        lamd = math.log(1 - RESTART_PERCENTAGE) / (-1 * float(RESTART_TIMEFRAME))
-        return random.expovariate(lamd) + self.globalTime
+    # Based on "Deanonymisation of Clients in Bitcoin P2P Network"
+    # Multipled by 3600 to convert hours to seconds
+    def getRestartTime(self): 
+        return (W_LAMBDA * np.random.weibull(W_K) * 3600) + self.globalTime
 
     def initializeNodes(self, numInitNodes):
         # Create initial nodes
