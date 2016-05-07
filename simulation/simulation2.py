@@ -93,7 +93,7 @@ def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, ou
       'darkNodeProb': darkNodeProb
     }, outFile)
 
-  network.drawGraph(filename = 'graph.png')
+  network.drawEccentricity(filename = 'eccentricity.png')
 
   print('Network state written. Terminating.') 
 

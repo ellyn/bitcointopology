@@ -493,6 +493,21 @@ class Network(object):
         nx.draw(graph)
         plt.savefig(filename)
 
+    # Draw eccentricity histogram out to file
+    # NOTE: Uses largest connected component to ensure all nodes have finite eccentricity
+    def drawEccentricity(self, filename = 'eccentricity.png'):
+        graph = self.getLCC()
+        eccentricities = [x[1] for x in nx.eccentricity(graph).items()]
+        unique = set(eccentricities)
+        counts = sorted([(v, eccentricities.count(v)) for v in unique], key = lambda x:x[0])
+        xs = [x[0] for x in counts]
+        ys = [x[1] for x in counts]
+        print(xs, ys)
+        plt.xlabel('Eccentricity')
+        plt.ylabel('Node Count')
+        plt.bar(xs, ys)
+        plt.savefig(filename)
+
     # Termination Condition: Global Time
     # Terminate once the network has persisted for a certain length of time.
     def getGlobalTime(self):
@@ -523,10 +538,7 @@ class Network(object):
           return -1
         return len(min_cut)
 
-    # Termination Condition: Diameter of largest connected component
-    # Terminate once the network's largest connected component has reached a given diameter
-    # (in case the network isn't connected)
-    def getLCCDiameter(self):
+    def getLCC(self):
         graph = self.getGraph()
         connected = list(nx.connected_components(graph))
         if len(connected) == 0:
@@ -538,7 +550,13 @@ class Network(object):
         for node in lcc:
             for neighbor in graph.neighbors(node):
                 newGraph.add_edge(node, neighbor, key = 0)
-        return nx.diameter(newGraph)
+        return newGraph
+ 
+    # Termination Condition: Diameter of largest connected component
+    # Terminate once the network's largest connected component has reached a given diameter
+    # (in case the network isn't connected)
+    def getLCCDiameter(self):
+       return nx.diameter(self.getLCC())
 
     def shouldTerminate(self, condition, value):
         if condition == TERMINATION_COND_TIME:
