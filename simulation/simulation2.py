@@ -34,8 +34,8 @@ parser.add_argument(
 parser.add_argument(
   '-d',
   '--darkNodeProb',
-  help='Set dark node probability (fractional) to DARKNODEPROB (default: 0.5)',
-  default=0.5,
+  help='Set dark node probability (fractional) to DARKNODEPROB (default: 0.9)',
+  default=0.9,
   type=float)
 parser.add_argument(
   '-f',
