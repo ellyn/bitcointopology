@@ -1,5 +1,7 @@
 #!/usr/bin/env python2.7
 
+from __future__ import print_function
+
 import argparse, time, pickle, json
 
 from constants import *
@@ -46,7 +48,7 @@ parser.add_argument(
 
 metrics = {
 #  'diameter': lambda n: n.getLCCDiameter(),
-  'minCut': lambda n: n.getMinCut(),
+  #'minCut': lambda n: n.getMinCut(),
   'totalNodeCount': lambda n: n.numNodes(),
   'connectionCount': lambda n: len([y for x in n.nodes for y in x.incomingCnxs]),
   'connectionDistribution': lambda n: [len(x.incomingCnxs) + len(x.outgoingCnxs) for x in n.nodes]
@@ -68,6 +70,7 @@ def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, ou
   # Run simulation until time over.
   while not network.shouldTerminate(termCond, termVal):
     network.processNextEvent()
+    print(network.globalTime, end = '\r')
     # done every X events
     if eventIndex % METRIC_EVENT_INTERVAL == 0:
       metric_log.append((network.globalTime, {key: metrics[key](network) for key in metrics}))
