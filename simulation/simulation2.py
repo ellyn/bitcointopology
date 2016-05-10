@@ -79,7 +79,7 @@ def executeSimulation(numNodes, latencyType, darkNodeProb, termCond, termVal, ou
     # done every X events
     if currInterval < int(currTime / dividedInterval):
       currInterval = int(currTime / dividedInterval)
-      print 'Recorded graph. ' + str(100 * currInterval / numIntervals) + '% of time passed'
+      print('Recorded graph. ' + str(100 * currInterval / numIntervals) + '% of time passed')
       metric_log.append((network.globalTime, {key: metrics[key](network) for key in metrics}))
     eventIndex += 1
 

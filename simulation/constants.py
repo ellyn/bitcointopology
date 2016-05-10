@@ -4,7 +4,7 @@ randomSeed = '0.166241939035787'
 random = random.Random(randomSeed)
 
 # NETWORK SETTINGS
-NUM_INIT_NODES = 6000
+NUM_INIT_NODES = 400
 NUM_SEEDERS = 6
 NUM_NODES = 1000
 

@@ -206,8 +206,10 @@ class Network(object):
         #          similarly to how it would if all of its connections had dropped. 
         elif eventEntry.eventType == REJOIN:
             src.isOnline = True
-            while src.outgoingCnxs <= MAX_OUTGOING:
+            numExpectedConnections = len(src.outgoingCnxs)
+            while numExpectedConnections <= MAX_OUTGOING:
                 self.addCxns(src, scheduledTime)
+                numExpectedConnections = numExpectedConnections + 1
             self.eventQueue.put((self.getRestartTime(),event(srcNode = src,
                                                              destNode = None,
                                                              eventType = RESTART,
