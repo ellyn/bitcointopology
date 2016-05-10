@@ -4,7 +4,10 @@ import argparse
 import pickle
 import random
 import networkx as nx
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

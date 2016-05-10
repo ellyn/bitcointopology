@@ -1,5 +1,7 @@
 import collections, itertools, Queue
 import networkx as nx
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import math
 import numpy as np
@@ -380,6 +382,8 @@ class Network(object):
         # src = None
         # dest = subject node
         elif eventEntry.eventType == NEW_DAY:
+            if eventEntry.destNode == self.nodes[0]:
+                print 'day ' + str(self.globalTime / ONE_DAY)
             dest.notifyNewDay(self.globalTime)
 
             ipList = [dest.ipV4Addr]
@@ -430,6 +434,7 @@ class Network(object):
 
         else:
             raise Exception("Invalid event type")
+        return self.globalTime
     
     # Return a graph of the network
     # TODO Maybe this could be constructed incrementally?
