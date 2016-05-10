@@ -19,7 +19,7 @@ if metric == 'histogram':
   plt.xlabel('Connection Count')
   plt.ylabel('Node Count')
   plt.bar(x_axis, y_axis)
-  plt.show()
+  plt.savefig('metric.png')
   
 else:
   x_axis = [x[0] for x in data]
@@ -31,4 +31,4 @@ else:
 
   plt.ylim(min(y_axis) - 1, max(y_axis) + 1)
   plt.plot(x_axis, y_axis, label = metric)
-  plt.show()
+  plt.savefig('metric.png')
