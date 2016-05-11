@@ -215,6 +215,9 @@ class TestNode(unittest.TestCase):
     def test_whenNodeRestarts_andNodeHasLessThanTwoOutgoingConnections_andElevenSecondsElapsed_receivesIPsFromSeeder(self):
         # patch MAX_OUTGOING instances in network.py so our node doesnt make any connections
 
+        self.nodePeer.learnIP(self.nodePeer2.ipV4Addr, self.sourceIP)
+        self.nodePeer.addToTried(self.nodePeer2.ipV4Addr, 0)
+        
         restartEvent = event(srcNode=self.nodePeer, destNode=None, eventType=RESTART, info=None)
         self.network.eventQueue.put((0, restartEvent))
 
