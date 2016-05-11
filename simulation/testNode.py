@@ -244,9 +244,6 @@ class TestNode(unittest.TestCase):
         self.assertEqual(nextEvent.eventType, REQUEST_CONNECTION_INFO)
     
     # 2.1 ADDR
-    def test_whenAddrMsgReceivedWithMoreThanThousand_sendingNodeBlacklisted(self):
-        self.assertTrue(True)
-
     @mock.patch('node.Node.selectAddrs')
     def test_whenBlacklistedNodeAttemptsToConnect_ignoreIt(self, mock_node_selectAddrs):
         # patch node.selectAddrs() to return too many addresses such that another node will blacklist it
