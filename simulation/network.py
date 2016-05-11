@@ -9,7 +9,7 @@ from constants import *
 from node import Node
 
 event = collections.namedtuple('Event', ['srcNode', 'destNode', 'eventType', 'info'])
-np.random.seed(hash(randomSeed) % 4294967295)
+np.random.seed(randomSeed)
 
 class Network(object):
     def __init__(self, numInitNodes = NUM_INIT_NODES, totalNodes = NUM_NODES, 

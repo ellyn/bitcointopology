@@ -1,6 +1,6 @@
 import random
 
-randomSeed = '0.166241939035787'
+randomSeed = 166241939
 random = random.Random(randomSeed)
 
 # NETWORK SETTINGS
