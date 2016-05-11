@@ -119,16 +119,20 @@ class Network(object):
     def addCxns(self, node, scheduledTime):
         numTriedEntries = sum([len(bucket) for bucket in node.triedTable])
         numNewEntries = sum([len(bucket) for bucket in node.newTable])
+        
+        if numNewEntries == 0:
+            table = node.triedTable
+        else:
+            rho = float(numTriedEntries) / numNewEntries
+            omega = len(node.outgoingCnxs)
 
-        rho = float(numTriedEntries) / numNewEntries
-        omega = len(node.outgoingCnxs)
+            PrTried = (rho**0.5) * (9 - omega)
+            PrTried /= (omega + 1) + (rho**0.5) * (9 - omega)
+
+            table = node.triedTable if random.random() < PrTried else node.newTable
+        
         numRejects = 0
         accepted = False
-
-        PrTried = (rho**0.5) * (9 - omega) 
-        PrTried /= (omega + 1) + (rho**0.5) * (9 - omega) 
-
-        table = node.triedTable if random.random() < PrTried else node.newTable
         ip = None
         if len(node.outgoingCnxs) < MAX_OUTGOING:
           while not accepted:
@@ -198,9 +202,17 @@ class Network(object):
             src.incomingCnxs = []
             src.outgoingCnxs = []
             src.isOnline = False
+            
+            numTriedEntries = sum([len(bucket) for bucket in src.triedTable])
+            numNewEntries = sum([len(bucket) for bucket in src.newTable])
+            if (numTriedEntries + numNewEntries) == 0:
+                # nothing in tables, so treat as if never joined network
+                joinEvent = JOIN
+            else:
+                joinEvent = REJOIN
             self.eventQueue.put((scheduledTime + latency, event(srcNode = src,
                                                                 destNode = None,
-                                                                eventType = REJOIN,
+                                                                eventType = joinEvent,
                                                                 info = None)))
 
         # REJOIN: A node rejoins the network after restarting and tries to make 8 connections,
