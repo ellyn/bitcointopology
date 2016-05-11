@@ -325,26 +325,6 @@ class TestNode(unittest.TestCase):
             flattenedIPs.extend(bucket.keys())
         [self.assertTrue(ip in flattenedIPs) for ip in nextEvent.info[1]]
         
-    '''
-    def whenIncomingConnectionEstablishedWithPeer_sendAddrMsgFromOwnTable(self):
-        #asdf
-    
-    def whenNodeReceivesLessThanTenAddr_forwardsToTwoRandomConnectedPeers(self):
-        #asdf
-    
-    def whenChoosingTwoRandomConnectedPeers_theyComeFromIpHashNonceFirstTwoLexographically(self):
-        #asdf
-    
-    def whenNewDay_NodeSendsOwnIpInAddrMsg(self):
-        #asdf
-    
-    def whenSendingAddrMsg_neverSendIpFromKnownTable(self):
-        #asdf
-    
-    def whenNewDay_knownListFlushed(self):
-        #asdf
-    '''
-    
     # 2.2 Tried table
     def test_whenSelectingBucketForAnIp_useSchemeFromPaper(self):
         self.nodePeer.nonce = 'some nonce'
@@ -448,57 +428,6 @@ class TestNode(unittest.TestCase):
         self.assertEqual(numPeerIpOccurencesBefore, 1)
         self.assertEqual(numPeerIpOccurencesAfter, 1)
     
-    '''
-    # TODO: Implement after we support ADDR
-    def test_whenPeerSentTriggeringMsg_andMoreThanTwentyMinsElapsed_onlyTimestampUpdated(self):
-        # do we support VERSION, ADDR, INVENTORY, GETDATA, PING messages?
-        # is ADDR -> CONNECTION_INFO event?
-        
-        # generate node with specific IP already in its tried table
-        peerIP = self.nodePeer2.ipV4Addr
-        bucket = self.nodePeer.mapToTriedBucket(peerIP)
-        self.nodePeer.learnIP(peerIP, self.sourceIP)
-        self.nodePeer.triedTable[bucket][peerIP] = self.network.globalTime
-        
-        # ensure network aware of nodes
-        self.network.hardcodedIPs[0] = peerIP
-        self.network.ipToNodes[peerIP] = self.nodePeer2
-
-        # in the future, add CONNECTION_INFO event to network.eventQueue as only existing event
-        TWENTY_MINUTES = 20 * 60
-        self.network.globalTime += TWENTY_MINUTES
-        connectionInfoEvent = event(srcNode=self.nodePeer, destNode=self.seederNode, eventType=CONNECTION_INFO, info=self.network.hardcodedIPs[0:1])
-        self.network.eventQueue.put((self.network.globalTime, connectionInfoEvent))
-
-        # mock out randomness
-        latency = 0.123
-        mock_network_generate_latency.return_value = latency# = mock.Mock(return_value=latency)
-        print self.network.generate_latency()
-
-        # collect data before
-        peerTimestampBefore = self.nodePeer.triedTable[bucket][peerIP]
-        triedTableTotalEntriesBefore = sum([len(b) for b in self.nodePeer.triedTable])
-        numPeerIpOccurencesBefore = sum([b.keys() for b in self.nodePeer.triedTable], []).count(peerIP)
-
-        # perform action in future
-        print 'this'
-        self.network.processNextEvent()
-        self.network.processNextEvent()
-        
-        # collect data after
-        peerTimestampAfter = self.nodePeer.triedTable[bucket][peerIP]
-        triedTableTotalEntriesAfter = sum([len(b) for b in self.nodePeer.triedTable])
-        numPeerIpOccurencesAfter = sum([b.keys() for b in self.nodePeer.triedTable], []).count(peerIP)
-        
-        # assertions
-        # assert node's tried table entry for peer has updated timestamp
-        print peerTimestampBefore, peerTimestampAfter
-        self.assertEqual(peerTimestampBefore < peerTimestampAfter, True)
-        self.assertEqual(triedTableTotalEntriesBefore, triedTableTotalEntriesAfter)
-        self.assertEqual(numPeerIpOccurencesBefore, 1)
-        self.assertEqual(numPeerIpOccurencesAfter, 1)
-        '''
-    
     # 2.2 New table
     def test_whenAddressFromDnsSeeder_onlyAddedToNewTable(self):
         ip = self.network.assignIP()
@@ -533,24 +462,6 @@ class TestNode(unittest.TestCase):
         self.assertTrue(foundInNew)
         self.assertFalse(foundInTried)
 
-    '''
-    def whenAddressFromAddrMsg_onlyAddedToNewTable(self):
-        # mock Node(peer, sender), eventQueue
-        # process AddrMsg
-        # assert addToTried() not called
-        # 
-        # TODO: implement this in project?
-        #       CONNECTION_INFO assumes seeder
-        #       but should we support peer2peer ADDR msgs?
-        #       otherwise this test is redundant with prev test method
-    
-    def whenAddressFromDnsSeeder_timestampBetweenThreeAndSevenDaysOld(self):
-        # TODO: implement this in project?
-    
-    def whenAddressFromAddrMsg_timestampIsPlusTwoHours(self):
-        # TODO: implement AddrMsg event in project?
-    '''
-    
     def test_whenSelectingBucket_useSchemeFromPaper(self):
         ip = self.network.assignIP()
         self.nodePeer2.ipV4Addr = ip
@@ -591,7 +502,6 @@ class TestNode(unittest.TestCase):
         self.assertEqual(len(actualBucket), 1)
         self.assertEqual(actualBucket[0], expectedBucket)
 
-    
     def test_whenHashingGroupSourceGroupPair_hashesToUniqueBucket(self):
         differentIPs = 10
         numTrials = 10
@@ -690,26 +600,6 @@ class TestNode(unittest.TestCase):
         self.assertEqual(len(self.nodePeer.newTable[bucketNum]), ADDRESSES_PER_BUCKET)
         self.assertTrue(peerIP in self.nodePeer.newTable[bucketNum].keys())
         self.assertFalse(oldestIp in self.nodePeer.newTable[bucketNum].keys())
-
-    '''
-    # 2.3 Selecting peers
-    def whenOutgoingConnectionDrops_newOutgoingConnectionSelected(self):
-        #asdf
-    
-    def whenReceiveBlacklistToActiveOutgoingConnection_dropThatConnection(self):
-        #asdf
-    
-    def whenSelectingNewOutgoingConnection_probSelectFromTriedEqualsThatFromPaper(self):
-        #asdf
-    
-    def whenSelectingAddressFromTable_higherProbForAddressWithNewerTimestamp(self):
-        #asdf
-    
-    def whenSelectingAddressFromTable_nonEmptyBucketChosen(self):
-        #asdf
-    
-    def whenSelectedAddressConnectionFails_newAddressChosen(self):
-        #asdf'''
     
 if __name__ == '__main__':
     unittest.main()
